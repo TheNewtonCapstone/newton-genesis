@@ -1,3 +1,6 @@
 [submodule "lib/Genesis"]
 	path = lib/Genesis
 	url = https://github.com/Genesis-Embodied-AI/Genesis.git
+[submodule "lib/rsl_rl"]
+	path = lib/rsl_rl
+	url = https://github.com/leggedrobotics/rsl_rl
