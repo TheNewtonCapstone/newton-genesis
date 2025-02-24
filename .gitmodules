@@ -1,0 +1,3 @@
+[submodule "lib/Genesis"]
+	path = lib/Genesis
+	url = https://github.com/Genesis-Embodied-AI/Genesis.git
