@@ -58,10 +58,9 @@ class NewtonEnv:
         self.base_init_quat = torch.tensor(self.env_cfg["base_init_quat"], device=self.device)
         #
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
-        print("PATH", os.environ.get("PYTHONPATH"))
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="assets/newton/newton.urdf",
+                file="../../assets/newton/newton.urdf",
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
