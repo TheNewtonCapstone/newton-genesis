@@ -33,7 +33,7 @@ class TerrainConfig:
     # Terrain dimensions and layout configuration
     terrain_size = 8.0  # Terrain length [m]
     num_rows = 3       # Number of terrain rows (levels)
-    num_cols = 5       # Number of terrain columns (types)
+    num_cols = 3       # Number of terrain columns (types)
 
     # Terrain type proportions:
     # [smooth slope, rough slope, stairs up, stairs down, discrete, stepping_stones]
