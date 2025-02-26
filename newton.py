@@ -6,8 +6,8 @@ import numpy as np
 import torch
 import genesis as gs
 
-from config.terrain import TerrainConfig
-from terrain.terrain import Terrain
+from core.config.terrain import TerrainConfig
+from core.terrain.terrain import Terrain
 
 def main():
 

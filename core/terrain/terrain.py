@@ -20,9 +20,11 @@ class Terrain():
     """
 
     def __init__(self, terrain_cfg: TerrainConfig, **data):
+
         # ---------------------------------------------------------------------------
         # Initialization: Basic parameters from configuration
         # ---------------------------------------------------------------------------
+
         super().__init__(**data)
         # Set subterrain size from configuration. Here we assume:
         #   index 0 -> width, index 1 -> length.
@@ -43,6 +45,7 @@ class Terrain():
         # ---------------------------------------------------------------------------
         # Compute derived quantities for subterrain vertex counts
         # ---------------------------------------------------------------------------
+
         self._num_rows: int = terrain_cfg.num_rows
         self._num_cols: int = terrain_cfg.num_cols
 
@@ -71,6 +74,7 @@ class Terrain():
     # ---------------------------------------------------------------------------
     # Public API: Get Subterrain Origins
     # ---------------------------------------------------------------------------
+
     def get_subterrain_origins(self):
         """
         Returns the origins of each subterrain as an array of shape (-1, 3).
@@ -86,6 +90,7 @@ class Terrain():
     # ---------------------------------------------------------------------------
     # Curriculum Construction: Generate and add terrains based on difficulty
     # ---------------------------------------------------------------------------
+
     def _construct_curriculum(self):
         for j in range(self._num_cols):
             for i in range(self._num_rows):
@@ -165,6 +170,7 @@ class Terrain():
     # ---------------------------------------------------------------------------
     # Update Dependent Quantities Based on Rows and Columns
     # ---------------------------------------------------------------------------
+
     def _update_rows_cols_dependents(self) -> None:
         """
         Update quantities that depend on the number of subterrains.
@@ -187,6 +193,7 @@ class Terrain():
     # ---------------------------------------------------------------------------
     # Add a Subterrain to the Global Height Field
     # ---------------------------------------------------------------------------
+
     def _add_sub_terrain(self, terrain: SubTerrain, row: int, col: int):
         """
         Inserts a generated subterrain into the global height field at the specified row and column.

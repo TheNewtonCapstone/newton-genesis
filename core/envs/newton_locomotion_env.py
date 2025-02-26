@@ -8,7 +8,7 @@ def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class NewtonEnv:
+class NewtonLocomotionEnv:
     def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False, device="cuda"):
         self.device = torch.device(device)
 
@@ -39,12 +39,12 @@ class NewtonEnv:
                 camera_lookat=(0.0, 0.0, 0.5),
                 camera_fov=40,
             ),
-            vis_options=gs.options.VisOptions(n_rendered_envs=1),
+            vis_options=gs.options.VisOptions(n_rendered_envs=4),
             rigid_options=gs.options.RigidOptions(
                 dt=self.dt,
                 constraint_solver=gs.constraint_solver.Newton,
                 enable_collision=True,
-                enable_joint_limit=True,
+                enable_joint_limit=False,
             ),
             show_viewer=show_viewer,
         )
@@ -58,10 +58,17 @@ class NewtonEnv:
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="../../assets/newton/newton.urdf",
+                file="assets/newton/newton.urdf",
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
+        )
+        self.cam = self.scene.add_camera(
+            res=(640, 480),
+            pos=(4.5, 0.0, 3.5),
+            lookat=(0, 0, 0.5),
+            fov=40,
+            GUI=True,
         )
 
         # build
@@ -111,6 +118,7 @@ class NewtonEnv:
             dtype=gs.tc_float,
         )
         self.extras = dict()  # extra information for logging
+
 
     def _resample_commands(self, envs_idx):
         self.commands[envs_idx, 0] = gs_rand_float(*self.command_cfg["lin_vel_x_range"], (len(envs_idx),), self.device)

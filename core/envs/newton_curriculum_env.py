@@ -1,15 +1,18 @@
-import torch
 import math
+import torch
 import genesis as gs
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
+
+from ..config.terrain import TerrainConfig
+from ..terrain.terrain import Terrain
 
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class NewtonEnv:
-    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False, device="cuda"):
+class NewtonCurriculumEnv:
+    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, terrain_cfg: TerrainConfig = None, show_viewer=False, device="cuda"):
         self.device = torch.device(device)
 
         self.num_envs = num_envs
@@ -26,9 +29,11 @@ class NewtonEnv:
         self.obs_cfg = obs_cfg
         self.reward_cfg = reward_cfg
         self.command_cfg = command_cfg
+        self.terrain_cfg = terrain_cfg
 
         self.obs_scales = obs_cfg["obs_scales"]
         self.reward_scales = reward_cfg["reward_scales"]
+        self.curriculum = terrain_cfg.curriculum
 
         # create scene
         self.scene = gs.Scene(
@@ -50,15 +55,30 @@ class NewtonEnv:
         )
 
         # add plain
-        self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
-
-        # add robot
-        self.base_init_pos = torch.tensor(self.env_cfg["base_init_pos"], device=self.device)
+        if self.curriculum:
+            self.terrain = Terrain(terrain_cfg)
+            self.terrain.build()
+            self.subterrain_origins = self.terrain.get_subterrain_origins()
+            self.base_init_pos = torch.tensor(self.subterrain_origins[0], device=self.device)
+            self.base_init_pos[2] += 0.3
+            self.scene.add_entity(
+                gs.morphs.Terrain(
+                    horizontal_scale=self.terrain.horizontal_scale,
+                    vertical_scale=self.terrain.vertical_scale,
+                    height_field=self.terrain.get_height_field(),
+                )
+            )
+            self.curriculum_levels = torch.zeros((num_envs,), device=self.device, dtype=torch.float32)
+        else:
+            self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
+            # add robot
+            self.base_init_pos = torch.tensor(self.env_cfg["base_init_pos"], device=self.device)
         self.base_init_quat = torch.tensor(self.env_cfg["base_init_quat"], device=self.device)
+        #
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="../../assets/newton/newton.urdf",
+                file="assets/newton/newton.urdf",
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
@@ -183,7 +203,7 @@ class NewtonEnv:
         return self.obs_buf, None, self.rew_buf, self.reset_buf, self.extras
 
     def get_observations(self):
-        return self.obs_buf
+        return self.obs_buf, self.extras
 
     def get_privileged_observations(self):
         return None
@@ -202,10 +222,14 @@ class NewtonEnv:
             envs_idx=envs_idx,
         )
 
+        # check curriculum
+        if self.curriculum:
+            self._update_terrain_curriculum(envs_idx)
+        else:
         # reset base
-        self.base_pos[envs_idx] = self.base_init_pos
+            self.base_pos[envs_idx] = self.base_init_pos
+            self.robot.set_pos(self.base_pos[envs_idx], zero_velocity=False, envs_idx=envs_idx)
         self.base_quat[envs_idx] = self.base_init_quat.reshape(1, -1)
-        self.robot.set_pos(self.base_pos[envs_idx], zero_velocity=False, envs_idx=envs_idx)
         self.robot.set_quat(self.base_quat[envs_idx], zero_velocity=False, envs_idx=envs_idx)
         self.base_lin_vel[envs_idx] = 0
         self.base_ang_vel[envs_idx] = 0
@@ -258,3 +282,45 @@ class NewtonEnv:
     def _reward_base_height(self):
         # Penalize base height away from target
         return torch.square(self.base_pos[:, 2] - self.reward_cfg["base_height_target"])
+
+    def _update_terrain_curriculum(self, indices = None) -> None:
+        if indices is None:
+            return
+
+        obs = self.get_observations()
+        agent_heights = self.robot.get_pos()[0, 2]
+        flat_origins = torch.tensor(
+            self.terrain.get_subterrain_origins(),
+            dtype=torch.float32,
+            device=self.device,
+        )
+        flat_origins[:, 2] += agent_heights
+        sub_terrain_length = self.terrain.subterrain_size[0]
+
+        level_indices = self.curriculum_levels[indices].long()
+
+        # The levl is updated based on the distance traversed by the agent
+        distance = self.robot.get_pos()[indices, :2] - flat_origins[level_indices, :2]
+        distance = torch.norm(distance, dim=1)
+        move_up = distance >= sub_terrain_length / 2
+        move_down = distance < sub_terrain_length / 4
+
+        # Update the Newton levels
+        self.curriculum_levels[indices] += 1 * move_up - 1 * move_down
+
+        # Ensure levels stay within bounds
+        max_level = self.terrain.num_sub_terrains - 1  # Max valid sub-terrain index
+        self.curriculum_levels[indices] = torch.clamp(
+            self.curriculum_levels[indices],
+            min=0,
+            max=max_level,
+        )
+
+        # Ensure newton_levels is a valid index type
+        level_indices = self.curriculum_levels[indices].long()
+
+        # Get new spawn positions based on the levels
+        new_spawn_positions = flat_origins[level_indices, :]
+
+        # Update the initial positions in the environment
+        self.robot.set_pos(pos = new_spawn_positions, envs_idx = indices)

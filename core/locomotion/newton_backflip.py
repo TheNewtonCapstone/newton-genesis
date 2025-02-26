@@ -3,7 +3,7 @@ import os
 import pickle
 
 import torch
-from go2_env import Go2Env
+from newton_env import NewtonEnv
 
 import genesis as gs
 
@@ -13,32 +13,32 @@ def get_cfgs():
         "num_actions": 12,
         # joint/link names
         "default_joint_angles": {  # [rad]
-            "FL_hip_joint": 0.0,
-            "FR_hip_joint": 0.0,
-            "RL_hip_joint": 0.0,
-            "RR_hip_joint": 0.0,
-            "FL_thigh_joint": 0.8,
-            "FR_thigh_joint": 0.8,
-            "RL_thigh_joint": 1.0,
-            "RR_thigh_joint": 1.0,
-            "FL_calf_joint": -1.5,
-            "FR_calf_joint": -1.5,
-            "RL_calf_joint": -1.5,
-            "RR_calf_joint": -1.5,
+            "FL_HAA": 0.0,
+            "FR_HAA": 0.0,
+            "HL_HAA": 0.0,
+            "HR_HAA": 0.0,
+            "FL_HFE": 0.8,
+            "FR_HFE": 0.8,
+            "HL_HFE": 1.0,
+            "HR_HFE": 1.0,
+            "FL_KFE": -1.5,
+            "FR_KFE": -1.5,
+            "HL_KFE": -1.5,
+            "HR_KFE": -1.5,
         },
         "dof_names": [
-            "FR_hip_joint",
-            "FR_thigh_joint",
-            "FR_calf_joint",
-            "FL_hip_joint",
-            "FL_thigh_joint",
-            "FL_calf_joint",
-            "RR_hip_joint",
-            "RR_thigh_joint",
-            "RR_calf_joint",
-            "RL_hip_joint",
-            "RL_thigh_joint",
-            "RL_calf_joint",
+            "FR_HAA",
+            "FR_HFE",
+            "FR_KFE",
+            "FL_HAA",
+            "FL_HFE",
+            "FL_KFE",
+            "HR_HAA",
+            "HR_HFE",
+            "HR_KFE",
+            "HL_HAA",
+            "HL_HFE",
+            "HL_KFE",
         ],
         # PD
         "kp": 70.0,
@@ -77,7 +77,7 @@ def get_cfgs():
     return env_cfg, obs_cfg, reward_cfg, command_cfg
 
 
-class BackflipEnv(Go2Env):
+class BackflipEnv(NewtonEnv):
     def get_observations(self):
         phase = torch.pi * self.episode_length_buf[:, None] / self.max_episode_length
         self.obs_buf = torch.cat(
