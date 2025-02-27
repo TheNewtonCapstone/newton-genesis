@@ -47,9 +47,9 @@ class KeyboardController:
             if self.key_state[keyboard.Key.down]:
                 self.current_command[0] -= self.command_scale  # Backward
             if self.key_state[keyboard.Key.left]:
-                self.current_command[2] += self.command_scale  # Rotate left
+                self.current_command[1] += self.command_scale  # Rotate left
             if self.key_state[keyboard.Key.right]:
-                self.current_command[2] -= self.command_scale  # Rotate right
+                self.current_command[1] -= self.command_scale  # Rotate right
 
     def get_command(self):
         """ Retrieve the current velocity command. """
