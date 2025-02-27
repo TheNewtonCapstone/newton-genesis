@@ -3,6 +3,8 @@ import math
 import genesis as gs
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
 
+from core.controllers.keyboard_controller import KeyboardController
+
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -11,6 +13,7 @@ def gs_rand_float(lower, upper, shape, device):
 class NewtonLocomotionEnv:
     def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False, device="cuda"):
         self.device = torch.device(device)
+        self.keyboard_controller = KeyboardController(command_scale=command_cfg["lin_vel_x_range"][1])
 
         self.num_envs = num_envs
         self.num_obs = obs_cfg["num_obs"]
@@ -119,6 +122,14 @@ class NewtonLocomotionEnv:
         )
         self.extras = dict()  # extra information for logging
 
+    def update_commands(self, envs_idx):
+        command = self.keyboard_controller.get_command()
+        if command is not None:
+            self.commands[0, 0] = command[0]
+            self.commands[0, 1] = command[1]
+            self.commands[0, 2] = command[2]
+
+        self._resample_commands(envs_idx)
 
     def _resample_commands(self, envs_idx):
         self.commands[envs_idx, 0] = gs_rand_float(self.command_cfg["lin_vel_x_range"][0], self.command_cfg["lin_vel_x_range"][1], (len(envs_idx),), self.device)
@@ -152,7 +163,7 @@ class NewtonLocomotionEnv:
             .nonzero(as_tuple=False)
             .flatten()
         )
-        self._resample_commands(envs_idx)
+        self.update_commands(envs_idx)
 
         # check termination and reset
         self.reset_buf = self.episode_length_buf > self.max_episode_length
@@ -233,7 +244,7 @@ class NewtonLocomotionEnv:
             )
             self.episode_sums[key][envs_idx] = 0.0
 
-        self._resample_commands(envs_idx)
+        self.update_commands(envs_idx)
 
     def reset(self):
         self.reset_buf[:] = True
