@@ -44,7 +44,7 @@ class NewtonLocomotionEnv:
                 dt=self.dt,
                 constraint_solver=gs.constraint_solver.Newton,
                 enable_collision=True,
-                enable_joint_limit=False,
+                enable_joint_limit=True,
             ),
             show_viewer=show_viewer,
         )
@@ -121,9 +121,9 @@ class NewtonLocomotionEnv:
 
 
     def _resample_commands(self, envs_idx):
-        self.commands[envs_idx, 0] = gs_rand_float(*self.command_cfg["lin_vel_x_range"], (len(envs_idx),), self.device)
-        self.commands[envs_idx, 1] = gs_rand_float(*self.command_cfg["lin_vel_y_range"], (len(envs_idx),), self.device)
-        self.commands[envs_idx, 2] = gs_rand_float(*self.command_cfg["ang_vel_range"], (len(envs_idx),), self.device)
+        self.commands[envs_idx, 0] = gs_rand_float(self.command_cfg["lin_vel_x_range"][0], self.command_cfg["lin_vel_x_range"][1], (len(envs_idx),), self.device)
+        self.commands[envs_idx, 1] = gs_rand_float(self.command_cfg["lin_vel_y_range"][0], self.command_cfg["lin_vel_y_range"][1], (len(envs_idx),), self.device)
+        self.commands[envs_idx, 2] = gs_rand_float(self.command_cfg["ang_vel_range"][0], self.command_cfg["ang_vel_range"][1], (len(envs_idx),), self.device)
 
     def step(self, actions):
         self.actions = torch.clip(actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"])

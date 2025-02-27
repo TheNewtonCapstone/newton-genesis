@@ -302,11 +302,11 @@ class NewtonCurriculumEnv:
         # The levl is updated based on the distance traversed by the agent
         distance = self.robot.get_pos()[indices, :2] - flat_origins[level_indices, :2]
         distance = torch.norm(distance, dim=1)
-        move_up = distance >= sub_terrain_length / 2
+        move_up = distance >= sub_terrain_length / 3
         move_down = distance < sub_terrain_length / 4
 
         # Update the Newton levels
-        self.curriculum_levels[indices] += 1 * move_up - 1 * move_down
+        self.curriculum_levels[indices] += 1 * move_up
 
         # Ensure levels stay within bounds
         max_level = self.terrain.num_sub_terrains - 1  # Max valid sub-terrain index

@@ -2,8 +2,8 @@ import argparse
 import os
 import pickle
 import shutil
-
 import genesis as gs
+
 from rsl_rl.runners import OnPolicyRunner
 
 from core.envs.newton_curriculum_env import NewtonCurriculumEnv
@@ -96,7 +96,7 @@ def get_cfgs():
         "termination_if_roll_greater_than": 10,  # degree
         "termination_if_pitch_greater_than": 10,
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.42],
+        "base_init_pos": [0.0, 0.0, 0.30],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -128,8 +128,8 @@ def get_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
-        "lin_vel_y_range": [0, 0],
+        "lin_vel_x_range": [-0.5, 0.5],
+        "lin_vel_y_range": [-0.5, 0.5],
         "ang_vel_range": [0, 0],
     }
 
@@ -140,7 +140,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=1000)
+    parser.add_argument("--max_iterations", type=int, default=200)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")
