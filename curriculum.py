@@ -3,6 +3,7 @@ import os
 import pickle
 import shutil
 import genesis as gs
+import torch
 
 from rsl_rl.runners import OnPolicyRunner
 
@@ -140,7 +141,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=200)
+    parser.add_argument("--max_iterations", type=int, default=100)
+    parser.add_argument("--train", action="store_true", default=False)
     args = parser.parse_args()
 
     gs.init(logging_level="warning")
@@ -150,9 +152,10 @@ def main():
     train_cfg = get_train_cfg(args.exp_name, args.max_iterations)
     terrain_cfg = TerrainConfig()
 
-    if os.path.exists(log_dir):
-        shutil.rmtree(log_dir)
-    os.makedirs(log_dir, exist_ok=True)
+    if args.train:
+        if os.path.exists(log_dir):
+            shutil.rmtree(log_dir)
+        os.makedirs(log_dir, exist_ok=True)
 
     if terrain_cfg.curriculum:
         env = NewtonCurriculumEnv(num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
@@ -163,15 +166,28 @@ def main():
             show_viewer=True
         )
 
-    runner = OnPolicyRunner(env, train_cfg, log_dir, device="cuda:0")
 
-    pickle.dump(
-        [env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg],
-        open(f"{log_dir}/cfgs.pkl", "wb"),
-    )
+    if args.train:
+        runner = OnPolicyRunner(env, train_cfg, log_dir, device="cuda:0")
+        pickle.dump(
+            [env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg],
+            open(f"{log_dir}/cfgs.pkl", "wb"),
+        )
+        runner.learn(num_learning_iterations=args.max_iterations, init_at_random_ep_len=True)
 
-    runner.learn(num_learning_iterations=args.max_iterations, init_at_random_ep_len=True)
 
+    else:
+        runner = OnPolicyRunner(env, train_cfg, log_dir, device="cuda:0")
+        resume_path = os.path.join(log_dir, f"model_{args.max_iterations}.pt")
+        runner.load(resume_path)
+
+        policy = runner.get_inference_policy(device="cuda:0")
+
+        obs, _ = env.reset()
+        with torch.no_grad():
+            while True:
+                actions = policy(obs)
+                obs, _, rews, dones, infos = env.step(actions)
 
 if __name__ == "__main__":
     main()
