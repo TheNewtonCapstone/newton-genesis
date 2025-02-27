@@ -10,7 +10,7 @@ class TerrainConfig:
     # ---------------------------------------------------------------------------
     # Curriculum Settings
     # ---------------------------------------------------------------------------
-    curriculum = True     # Enable curriculum learning
+    curriculum = False     # Enable curriculum learning
     # measure_heights = True  # Enable height measurements (for rough terrain only)
 
     # # Points used for measuring terrain heights
