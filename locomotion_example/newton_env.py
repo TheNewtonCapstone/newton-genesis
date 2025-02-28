@@ -1,5 +1,4 @@
 import torch
-import os
 import math
 import genesis as gs
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
@@ -56,12 +55,10 @@ class NewtonEnv:
         # add robot
         self.base_init_pos = torch.tensor(self.env_cfg["base_init_pos"], device=self.device)
         self.base_init_quat = torch.tensor(self.env_cfg["base_init_quat"], device=self.device)
-        #
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
-        print("PATH", os.environ.get("PYTHONPATH"))
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="assets/newton/newton.urdf",
+                file="../../assets/newton/newton.urdf",
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
