@@ -4,7 +4,7 @@ import genesis as gs
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
 
 from core.controllers.keyboard_controller import KeyboardController
-
+from core.logger.logger import Logger
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
