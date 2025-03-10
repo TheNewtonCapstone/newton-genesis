@@ -159,16 +159,16 @@ def main():
 
     if terrain_cfg.curriculum:
         env = NewtonCurriculumEnv(num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
-        terrain_cfg=terrain_cfg, show_viewer=True)
+        terrain_cfg=terrain_cfg, show_viewer=True, device=gs.device)
     else:
         env = NewtonLocomotionEnv(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
-            show_viewer=True
+            show_viewer=True, device=gs.device
         )
 
 
     if args.train:
-        runner = OnPolicyRunner(env, train_cfg, log_dir, device="cuda:0")
+        runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
         pickle.dump(
             [env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg],
             open(f"{log_dir}/cfgs.pkl", "wb"),
@@ -177,11 +177,11 @@ def main():
 
 
     else:
-        runner = OnPolicyRunner(env, train_cfg, log_dir, device="cuda:0")
+        runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
         resume_path = os.path.join(log_dir, f"model_{args.max_iterations}.pt")
         runner.load(resume_path)
 
-        policy = runner.get_inference_policy(device="cuda:0")
+        policy = runner.get_inference_policy(device=gs.device)
 
         obs, _ = env.reset()
         with torch.no_grad():
