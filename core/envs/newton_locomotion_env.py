@@ -33,6 +33,8 @@ class NewtonLocomotionEnv:
         self.obs_scales = obs_cfg["obs_scales"]
         self.reward_scales = reward_cfg["reward_scales"]
 
+        self.logger = Logger()
+
         # create scene
         self.scene = gs.Scene(
             sim_options=gs.options.SimOptions(dt=self.dt, substeps=2),

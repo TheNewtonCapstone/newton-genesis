@@ -28,8 +28,8 @@ class Logger:
     def _init_csv_files(self):
         """ Initializes CSV files with appropriate headers. """
         headers = {
-            "state_observation": ["Time(ms)", "Base_X", "Base_Y", "Base_Z", "Roll", "Pitch", "Yaw", "Lin_Vel_X",
-                                  "Lin_Vel_Y", "Lin_Vel_Z", "Ang_Vel_X", "Ang_Vel_Y", "Ang_Vel_Z"],
+            "state_observation": ["Time(ms)", "Roll", "Pitch", "Yaw", "Lin_Vel_X",
+                                  "Lin_Vel_Y", "Lin_Vel_Z"],
             "action_patterns": ["Time(ms)", "Commanded_Action_1", "Executed_Action_1", "Action_Change_Rate_1", "..."],
             "rewards": ["Time(ms)", "Tracking_Lin_Vel", "Tracking_Ang_Vel", "Lin_Vel_Z", "Action_Rate", "Base_Height"],
             "dynamics": ["Time(ms)", "Contact_Force_X", "Contact_Force_Y", "Contact_Force_Z", "Joint_Torque_1", "..."],
@@ -47,7 +47,7 @@ class Logger:
         """ Logs base state, orientation, velocities. """
         timestamp = int((time.time() - self.start_time) * 1000)
         roll, pitch, yaw = self._quat_to_euler(base_quat)
-        data = [timestamp] + base_pos.tolist() + [roll, pitch, yaw] + lin_vel.tolist() + ang_vel.tolist()
+        data = f"{timestamp}, {roll}, {pitch}, {yaw}, {lin_vel.tolist()}"
         self._write_to_csv("state_observation", data)
 
     def log_action_patterns(self, commanded_action, executed_action, action_rate):
