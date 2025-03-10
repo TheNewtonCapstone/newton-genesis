@@ -12,11 +12,10 @@ class Logger:
 
         # Define log file names
         self.files = {
-            "state_observation": os.path.join(log_dir, "state_observation_log.csv"),
-            "action_patterns": os.path.join(log_dir, "action_patterns_log.csv"),
-            "rewards": os.path.join(log_dir, "rewards_log.csv"),
-            "dynamics": os.path.join(log_dir, "dynamics_log.csv"),
-            "implementation": os.path.join(log_dir, "implementation_log.csv"),
+            "base_pos_and_ori": os.path.join(log_dir, "base_pos_and_ori_.csv"),
+            "joint_efforts": os.path.join(log_dir, "joint_efforts.csv"),
+            "joint_velocities": os.path.join(log_dir, "joint_velocities.csv"),
+            "joint_positions": os.path.join(log_dir, "joint_positions.csv"),
         }
 
         # Initialize files with headers
@@ -28,13 +27,45 @@ class Logger:
     def _init_csv_files(self):
         """ Initializes CSV files with appropriate headers. """
         headers = {
-            "state_observation": ["Time(ms)", "Base_X", "Base_Y", "Base_Z", "Roll", "Pitch", "Yaw", "Lin_Vel_X",
-                                  "Lin_Vel_Y", "Lin_Vel_Z", "Ang_Vel_X", "Ang_Vel_Y", "Ang_Vel_Z"],
-            "action_patterns": ["Time(ms)", "Commanded_Action_1", "Executed_Action_1", "Action_Change_Rate_1", "..."],
-            "rewards": ["Time(ms)", "Tracking_Lin_Vel", "Tracking_Ang_Vel", "Lin_Vel_Z", "Action_Rate", "Base_Height"],
-            "dynamics": ["Time(ms)", "Contact_Force_X", "Contact_Force_Y", "Contact_Force_Z", "Joint_Torque_1", "..."],
-            "implementation": ["Time(ms)", "PD_Target_1", "PD_Actual_1", "Action_Scaling_Before",
-                               "Action_Scaling_After", "..."]
+
+            "base_pos_and_ori": ["Time(ms)", "Base_X", "Base_Y", "Base_Z", "Roll", "Pitch", "Yaw"],
+
+            "joint_efforts": ["Time(ms)", "FR_HAA",
+                              "FR_HFE",
+                              "FR_KFE",
+                              "FL_HAA",
+                              "FL_HFE",
+                              "FL_KFE",
+                              "HR_HAA",
+                              "HR_HFE",
+                              "HR_KFE",
+                              "HL_HAA",
+                              "HL_HFE",
+                              "HL_KFE", ],
+            "joint_velocities": ["Time(ms)", "FR_HAA",
+                                 "FR_HFE",
+                                 "FR_KFE",
+                                 "FL_HAA",
+                                 "FL_HFE",
+                                 "FL_KFE",
+                                 "HR_HAA",
+                                 "HR_HFE",
+                                 "HR_KFE",
+                                 "HL_HAA",
+                                 "HL_HFE",
+                                 "HL_KFE", ],
+            "joint_positions": ["Time(ms)", "FR_HAA",
+                                "FR_HFE",
+                                "FR_KFE",
+                                "FL_HAA",
+                                "FL_HFE",
+                                "FL_KFE",
+                                "HR_HAA",
+                                "HR_HFE",
+                                "HR_KFE",
+                                "HL_HAA",
+                                "HL_HFE",
+                                "HL_KFE", ]
         }
 
         for log_type, file_path in self.files.items():
@@ -43,37 +74,29 @@ class Logger:
                     writer = csv.writer(f)
                     writer.writerow(headers[log_type])
 
-    def log_state_observation(self, base_pos, base_quat, lin_vel, ang_vel):
-        """ Logs base state, orientation, velocities. """
-        timestamp = int((time.time() - self.start_time) * 1000)
-        roll, pitch, yaw = self._quat_to_euler(base_quat)
-        data = [timestamp] + base_pos.tolist() + [roll, pitch, yaw] + lin_vel.tolist() + ang_vel.tolist()
-        self._write_to_csv("state_observation", data)
+    def _tensor_to_string(self, tensor):
+        return ', '.join(map(str, tensor.tolist()))
 
-    def log_action_patterns(self, commanded_action, executed_action, action_rate):
-        """ Logs action patterns. """
+    def log_base_pos_and_ori(self, base_pos, bas_quat):
         timestamp = int((time.time() - self.start_time) * 1000)
-        data = [timestamp] + commanded_action.tolist() + executed_action.tolist() + action_rate.tolist()
-        self._write_to_csv("action_patterns", data)
+        roll, pitch, yaw = self._quat_to_euler(bas_quat)
+        data = [timestamp] + base_pos.tolist() + [roll, pitch, yaw]
+        self._write_to_csv("base_pos_and_ori", data)
 
-    def log_rewards(self, reward_dict):
-        """ Logs reward components separately. """
+    def log_joint_positions(self, joint_positions):
         timestamp = int((time.time() - self.start_time) * 1000)
-        data = [timestamp] + [reward_dict.get(k, 0) for k in
-                              ["tracking_lin_vel", "tracking_ang_vel", "lin_vel_z", "action_rate", "base_height"]]
-        self._write_to_csv("rewards", data)
+        data = [timestamp] + joint_positions.tolist()
+        self._write_to_csv("joint_positions", data)
 
-    def log_dynamics(self, contact_forces, joint_torques):
-        """ Logs environmental interactions like contact forces and joint torques. """
+    def log_joint_velocities(self, joint_velocites):
         timestamp = int((time.time() - self.start_time) * 1000)
-        data = [timestamp] + contact_forces.tolist() + joint_torques.tolist()
-        self._write_to_csv("dynamics", data)
+        data = [timestamp] + joint_velocites.tolist()
+        self._write_to_csv("joint_velocities", data)
 
-    def log_implementation(self, pd_target, pd_actual, action_scaling_before, action_scaling_after):
-        """ Logs PD control performance and action scaling effects. """
+    def log_joint_efforts(self, joint_efforts):
         timestamp = int((time.time() - self.start_time) * 1000)
-        data = [timestamp] + pd_target.tolist() + pd_actual.tolist() + [action_scaling_before, action_scaling_after]
-        self._write_to_csv("implementation", data)
+        data = [timestamp] + joint_efforts.tolist()
+        self._write_to_csv("joint_efforts", data)
 
     def _write_to_csv(self, log_type, data):
         """ Writes data to a CSV file. """
@@ -83,7 +106,7 @@ class Logger:
 
     def _quat_to_euler(self, quat):
         """ Converts quaternion to Euler angles (roll, pitch, yaw). """
-        x, y, z, w = quat[0]
+        x, y, z, w = quat
         t0 = +2.0 * (w * x + y * z)
         t1 = +1.0 - 2.0 * (x * x + y * y)
         roll = torch.atan2(t0, t1)
