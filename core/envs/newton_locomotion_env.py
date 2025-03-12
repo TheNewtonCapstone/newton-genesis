@@ -4,7 +4,7 @@ import genesis as gs
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
 
 from core.controllers.keyboard_controller import KeyboardController
-
+from core.logger.logger import Logger
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -32,6 +32,8 @@ class NewtonLocomotionEnv:
 
         self.obs_scales = obs_cfg["obs_scales"]
         self.reward_scales = reward_cfg["reward_scales"]
+
+        self.logger = Logger()
 
         # create scene
         self.scene = gs.Scene(
@@ -198,6 +200,22 @@ class NewtonLocomotionEnv:
 
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
+
+        if self.logger:
+            # base position and orientation
+            self.logger.log_base_pos_and_ori(self.base_pos[0], self.base_quat[0])
+
+            # joint velocities
+            self.logger.log_joint_velocities(self.dof_vel[0])
+
+            # joint positions
+            self.logger.log_joint_positions(self.dof_pos[0])
+
+            # joint efforts
+            joint_efforts = self.robot.get_dofs_force(self.motor_dofs)[0]
+            self.logger.log_joint_efforts(joint_efforts)
+
+
 
         return self.obs_buf, None, self.rew_buf, self.reset_buf, self.extras
 
