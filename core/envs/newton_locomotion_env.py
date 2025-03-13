@@ -274,6 +274,7 @@ class NewtonLocomotionEnv:
     def reset(self):
         self.reset_buf[:] = True
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
+        self.domain_randomizer.reset()
         return self.obs_buf, None
 
     # ------------ reward functions----------------
