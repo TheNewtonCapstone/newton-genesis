@@ -207,6 +207,10 @@ class NewtonLocomotionEnv:
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
 
+        # Push the robots
+        if self.step_idx % 100 == 0:
+            self.domain_randomizer.push_xy()
+
         if self.logger:
             # base position and orientation
             self.logger.log_base_pos_and_ori(self.base_pos[0], self.base_quat[0])
@@ -220,9 +224,6 @@ class NewtonLocomotionEnv:
             # joint efforts
             joint_efforts = self.robot.get_dofs_force(self.motor_dofs)[0]
             self.logger.log_joint_efforts(joint_efforts)
-
-        if self.step_idx % 100000:
-            self.domain_randomizer.randomize()
 
         return self.obs_buf, None, self.rew_buf, self.reset_buf, self.extras
 
@@ -269,12 +270,13 @@ class NewtonLocomotionEnv:
             )
             self.episode_sums[key][envs_idx] = 0.0
 
+        self.domain_randomizer.randomize(envs_idx)
+
         self.update_commands(envs_idx)
 
     def reset(self):
         self.reset_buf[:] = True
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
-        self.domain_randomizer.reset()
         return self.obs_buf, None
 
     # ------------ reward functions----------------
