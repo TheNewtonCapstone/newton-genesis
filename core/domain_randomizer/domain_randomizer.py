@@ -9,44 +9,57 @@ class DomainRandomizer:
 
         self.motor_dofs_idx = [self.robot.get_joint(name).dof_idx_local for name in joint_names]
         self.base_dofs_idx = self.robot.base_joint.dof_idx
+        self.step_idx = 0
 
         self.base_mass_shift = torch.zeros(self.num_envs, 1)
         self.base_com_shift = torch.zeros(self.num_envs, 1, 3)
 
-    def randomize(self):
+    def randomize(self, envs_idx=None):
 
         #### Randomizing the mass and COM
         mass_shift = self.rand_mass_shift()
         com_shift = self.rand_com_shift()
+        print("Shifting the mass and COM by:", mass_shift, com_shift)
 
         # Shifts the mass of the base link
         self.robot.set_mass_shift(
             mass_shift= mass_shift,
             link_indices=[0],
+            envs_idx=envs_idx,
         )
 
         # Shifts the COM of the base link
         self.robot.set_COM_shift(
             com_shift= com_shift,
-            link_indices=[0]
+            link_indices=[0],
+            envs_idx=envs_idx,
         )
 
         #### Push robot around
-        base_vel = 2 * torch.rand(self.num_envs, len(self.base_dofs_idx)) - 1
-        self.robot.set_dofs_velocity(base_vel, self.base_dofs_idx)
+        # base_vel = 2 * torch.rand(self.num_envs, len(self.base_dofs_idx)) - 1
+        # self.robot.set_dofs_velocity(base_vel, self.base_dofs_idx)
+        # print("Pushing the robot:", base_vel)
 
     def reset(self):
         # Resetting shift
         self.reset_mass_shift()
         self.reset_com_shift()
+        print("Resetting the robot's shift")
 
-    def rand_com_shift(self):
-        com_shift = 0.5 * (2 * torch.randn_like(self.base_com_shift) - 1)
+    def rand_com_shift(self, envs_idx = None):
+        if envs_idx is None:
+            com_shift = 0.1 * torch.randn_like(self.base_com_shift)
+        else:
+            com_shift = 0.1 * torch.randn(envs_idx, 1)
         com_shift[:, :, 2] = 0.0  # No changes in z-axis
         return com_shift
 
-    def rand_mass_shift(self):
-        return 0.5 * (2 * torch.randn_like(self.base_mass_shift) - 1)
+    def rand_mass_shift(self, envs_idx = None):
+        if envs_idx is None:
+            mass_shift = 0.5 * torch.randn_like(self.base_mass_shift)
+        else:
+            mass_shift = 0.5 * torch.randn(envs_idx, 1)
+        return mass_shift
 
     def reset_mass_shift(self):
         self.robot.set_mass_shift(
