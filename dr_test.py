@@ -51,7 +51,7 @@ def main():
         ),
     )
     ########################## build ##########################
-    n_envs = 1
+    n_envs = 2
     scene.build(n_envs=n_envs)
 
     ########################## domain randomization ##########################
