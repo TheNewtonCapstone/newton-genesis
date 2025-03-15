@@ -8,22 +8,13 @@ import genesis as gs
 from core.domain_randomizer import DomainRandomizer
 
 
-def rand_com_shift(n_envs):
-    com_shift = 0.5 * (2 * torch.rand(n_envs, 1, 3) - 1)
-    com_shift[:, :, 2] = 0.0  # No changes in z-axis
-    return com_shift
-
-def rand_mass_shift(n_envs):
-    return 0.5 * (2 * torch.rand(n_envs, 1) - 1)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--vis", action="store_true", default=True)
     args = parser.parse_args()
 
     ########################## init ##########################
-    gs.init(seed=0, precision="32", logging_level="warning")
+    gs.init(logging_level="warning")
 
     ########################## create a scene ##########################
     scene = gs.Scene(
@@ -51,21 +42,10 @@ def main():
         ),
     )
     ########################## build ##########################
-    n_envs = 2
+    n_envs = 4
     scene.build(n_envs=n_envs)
 
     ########################## domain randomization ##########################
-    robot.set_friction_ratio(
-        friction_ratio=0.5 + torch.rand(scene.n_envs, robot.n_links),
-        link_indices=np.arange(0, robot.n_links),
-    )
-
-    # set mass of a single link
-    link = robot.get_link("base_link")
-    rigid = scene.sim.rigid_solver
-    ori_mass = rigid.links_info.inertial_mass.to_numpy()
-    print("original mass", link.get_mass(), ori_mass)
-
     joint_names = [
             "FR_HAA",
             "FR_HFE",
@@ -116,6 +96,7 @@ def main():
                 domain_rand.reset()
             else:
                 domain_rand.randomize()
+                domain_rand.push_xy()
 
             reset = not reset
 
