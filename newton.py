@@ -5,6 +5,9 @@ import shutil
 import torch
 
 import genesis as gs
+import onnxruntime as ort
+import numpy as np
+
 from rsl_rl.runners import OnPolicyRunner
 from core.envs.newton_curriculum_env import NewtonCurriculumEnv
 from core.envs.newton_locomotion_env import NewtonLocomotionEnv
@@ -180,6 +183,30 @@ def evaluate_model(runner, env, max_iterations):
             obs, _, rews, dones, infos = env.step(actions)
 
 
+def evaluate_onnx_model(onnx_model_path, env, max_iterations):
+    """Loads an ONNX model and runs evaluation in the simulation environment."""
+    # Load ONNX model
+    session = ort.InferenceSession(onnx_model_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+
+    # Get input and output names from ONNX model
+    input_name = session.get_inputs()[0].name
+    output_name = session.get_outputs()[0].name
+
+    obs, _ = env.reset()
+
+    with torch.no_grad():
+        while True:
+            # Convert PyTorch tensor to numpy (ONNX expects numpy arrays)
+            obs_np = obs.cpu().numpy().astype(np.float32)
+
+            # Run inference
+            actions_np = session.run([output_name], {input_name: obs_np})[0]
+
+            # Convert actions back to tensor
+            actions = torch.tensor(actions_np, dtype=torch.float32, device=obs.device)
+
+            obs, _, rews, dones, infos = env.step(actions)
+
 def main():
     """Main function to parse arguments and run training or evaluation."""
     # Argument Parsing
@@ -188,6 +215,7 @@ def main():
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
     parser.add_argument("--max_iterations", type=int, default=200)
     parser.add_argument("--train", action="store_true", default=False)
+    parser.add_argument("--eval-onnx", action="store_true", default=False)
     args = parser.parse_args()
 
     # Setup Experiment
@@ -204,7 +232,10 @@ def main():
     if args.train:
         train_model(runner, env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg, log_dir, args.max_iterations)
     else:
-        evaluate_model(runner, env, args.max_iterations)
+        if args.eval_onnx:
+            evaluate_onnx_model("logs/newton-walking/model_200.onnx", env, args.max_iterations)
+        else:
+            evaluate_model(runner, env, args.max_iterations)
 
 
 if __name__ == "__main__":
