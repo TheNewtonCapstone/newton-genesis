@@ -5,6 +5,7 @@ from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transfo
 
 from core.controllers.keyboard_controller import KeyboardController
 from core.logger.logger import Logger
+from core.domain_randomizer import DomainRandomizer
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -34,6 +35,7 @@ class NewtonLocomotionEnv:
         self.reward_scales = reward_cfg["reward_scales"]
 
         self.logger = Logger()
+
 
         # create scene
         self.scene = gs.Scene(
@@ -124,6 +126,9 @@ class NewtonLocomotionEnv:
         )
         self.extras = dict()  # extra information for logging
 
+        self.domain_randomizer = DomainRandomizer(self.scene, self.robot, self.num_envs , self.env_cfg["dof_names"])
+        self.step_idx = 0
+
     def update_commands(self, envs_idx):
         command = self.keyboard_controller.get_command()
         if command is not None:
@@ -144,6 +149,7 @@ class NewtonLocomotionEnv:
         target_dof_pos = exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
         self.robot.control_dofs_position(target_dof_pos, self.motor_dofs)
         self.scene.step()
+        self.step_idx += 1
 
         # update buffers
         self.episode_length_buf += 1
@@ -201,6 +207,10 @@ class NewtonLocomotionEnv:
         self.last_actions[:] = self.actions[:]
         self.last_dof_vel[:] = self.dof_vel[:]
 
+        # Push the robots
+        if self.step_idx % 100 == 0:
+            self.domain_randomizer.push_xy()
+
         if self.logger:
             # base position and orientation
             self.logger.log_base_pos_and_ori(self.base_pos[0], self.base_quat[0])
@@ -214,8 +224,6 @@ class NewtonLocomotionEnv:
             # joint efforts
             joint_efforts = self.robot.get_dofs_force(self.motor_dofs)[0]
             self.logger.log_joint_efforts(joint_efforts)
-
-
 
         return self.obs_buf, None, self.rew_buf, self.reset_buf, self.extras
 
@@ -261,6 +269,8 @@ class NewtonLocomotionEnv:
                 torch.mean(self.episode_sums[key][envs_idx]).item() / self.env_cfg["episode_length_s"]
             )
             self.episode_sums[key][envs_idx] = 0.0
+
+        self.domain_randomizer.randomize(envs_idx)
 
         self.update_commands(envs_idx)
 
