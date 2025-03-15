@@ -90,7 +90,7 @@ def get_cfgs():
             "HL_KFE",
         ],
         # PD
-        "kp": 20.0,
+        "kp":20.0,
         "kd": 0.5,
         # termination
         "termination_if_roll_greater_than": 10,  # degree
@@ -138,7 +138,7 @@ def get_cfgs():
 
 def setup_experiment(args):
     """Initializes logging and configuration settings."""
-    gs.init()
+    gs.init(logging_level="warning")
     log_dir = f"logs/{args.exp_name}"
     if args.train and os.path.exists(log_dir):
         shutil.rmtree(log_dir)
@@ -157,6 +157,7 @@ def create_environment(args, env_cfg, obs_cfg, reward_cfg, command_cfg, terrain_
     return NewtonLocomotionEnv(
         num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg,
         reward_cfg=reward_cfg, command_cfg=command_cfg,
+        urdf_path="assets/newton/newton.urdf",
         show_viewer=True, device=gs.device
     )
 
@@ -185,7 +186,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=100)
+    parser.add_argument("--max_iterations", type=int, default=200)
     parser.add_argument("--train", action="store_true", default=False)
     args = parser.parse_args()
 

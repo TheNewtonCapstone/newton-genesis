@@ -4,36 +4,34 @@ import pickle
 
 import torch
 from rsl_rl.runners import OnPolicyRunner
-from newton_env import NewtonEnv
+from core.envs.newton_locomotion_env import NewtonLocomotionEnv
 
 import genesis as gs
 import pprint
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
-    parser.add_argument("--ckpt", type=int, default=100)
+    parser.add_argument("--ckpt", type=int, default=200)
     args = parser.parse_args()
 
     gs.init()
 
-    log_dir = f"logs/{args.exp_name}"
-    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(f"logs/{args.exp_name}/cfgs.pkl", "rb"))
+    log_dir = f"../../logs/{args.exp_name}"
+    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(f"../../logs/{args.exp_name}/cfgs.pkl", "rb"))
     pprint.pprint(env_cfg)
     pprint.pprint(obs_cfg)
     pprint.pprint(reward_cfg)
     pprint.pprint(command_cfg)
 
-
     reward_cfg["reward_scales"] = {}
 
-
-    env = NewtonEnv(
+    env = NewtonLocomotionEnv(
         num_envs=1,
         env_cfg=env_cfg,
         obs_cfg=obs_cfg,
         reward_cfg=reward_cfg,
         command_cfg=command_cfg,
-        show_viewer=True,
+        urdf_path="../../assets/newton/newton.urdf"
     )
 
     print("Exporting model to ONNX format...")
