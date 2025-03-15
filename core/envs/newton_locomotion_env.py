@@ -12,7 +12,7 @@ def gs_rand_float(lower, upper, shape, device):
 
 
 class NewtonLocomotionEnv:
-    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False, device="cuda"):
+    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, urdf_path=None, show_viewer=False, device="cuda"):
         self.device = torch.device(device)
         self.keyboard_controller = KeyboardController(command_scale=command_cfg["lin_vel_x_range"][1])
 
@@ -63,9 +63,14 @@ class NewtonLocomotionEnv:
         self.base_init_pos = torch.tensor(self.env_cfg["base_init_pos"], device=self.device)
         self.base_init_quat = torch.tensor(self.env_cfg["base_init_quat"], device=self.device)
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
+
+        if urdf_path is None:
+            print("URDF Path not provided")
+            return
+
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="assets/newton/newton.urdf",
+                file=urdf_path,
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),

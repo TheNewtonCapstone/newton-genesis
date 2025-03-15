@@ -1,5 +1,7 @@
 import torch
+import random
 from genesis.engine.solvers.rigid.rigid_solver_decomp import RigidSolver
+from genesis.engine.materials.rigid import Rigid
 
 class DomainRandomizer:
     def __init__(self, scene, robot, num_envs, joint_names):
@@ -42,6 +44,9 @@ class DomainRandomizer:
             envs_idx=envs_idx,
         )
 
+        # Randomize friction
+        self.rand_terrain_friction()
+
 
     def push_xy(self):
         # Generate random forces in x and y, keeping z = 0
@@ -75,6 +80,24 @@ class DomainRandomizer:
         else:
             mass_shift = 0.1 * torch.randn(envs_idx.shape[0], 1)
         return mass_shift
+
+    def rand_terrain_friction(self):
+        """
+        Randomizes the friction of the terrain's rigid bodies.
+
+        Args:
+            scene (gs.Scene): The physics simulation scene containing terrain entities.
+        """
+        min_friction = 0.01  # Minimum allowed friction
+        max_friction = 1.0  # Maximum allowed friction
+
+        for entity in self.scene.entities:
+            if hasattr(entity, "material") and isinstance(entity.material, Rigid):
+                # Generate a random friction value within the allowed range
+                new_friction = random.uniform(min_friction, max_friction)
+
+                # Update the material's friction
+                entity.set_friction(new_friction)  # Directly modifying the private variable
 
     def reset_mass_shift(self):
         self.robot.set_mass_shift(
