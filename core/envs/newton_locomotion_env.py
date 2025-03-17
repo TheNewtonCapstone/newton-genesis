@@ -1,3 +1,5 @@
+from typing import List
+
 import torch
 import math
 import genesis as gs
@@ -91,8 +93,27 @@ class NewtonLocomotionEnv:
         self.contact_links = torch.tensor(self.contact_links)
 
         # PD control parameters
-        self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motor_dofs)
-        self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motor_dofs)
+        # self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motor_dofs)
+        # self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motor_dofs)
+
+        from core.actuators import LSTMActuator
+
+        self.actuators: List[LSTMActuator] = []
+        motor_model_path = "assets/newton/models/lstm.pth"
+        model_params = {
+            "hidden_size": 32,
+            "num_layers": 1
+        }
+
+        for i in range(12):
+            actuator = LSTMActuator(
+                scene=self.scene,
+                motor_model_path=motor_model_path,
+                model_params=model_params,
+                device=gs.device,
+            )
+            actuator.build()
+            self.actuators.append(actuator)
 
         # prepare reward functions and multiply reward scales by dt
         self.reward_functions, self.episode_sums = dict(), dict()
@@ -154,7 +175,24 @@ class NewtonLocomotionEnv:
         self.actions = torch.clip(actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"])
         exec_actions = self.last_actions if self.simulate_action_latency else self.actions
         target_dof_pos = exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
-        self.robot.control_dofs_position(target_dof_pos, self.motor_dofs)
+
+        # Implementing Actuators
+        output_current_positions = self.robot.get_dofs_position(self.motor_dofs)
+        output_current_velocities = self.robot.get_dofs_velocity(self.motor_dofs)
+
+        efforts_to_apply = torch.zeros_like(self.actions)
+
+        for i, actuator in enumerate(self.actuators):
+            efforts = actuator.step(
+                output_current_positions=output_current_positions[:, i],
+                output_current_velocities=output_current_velocities[:, i],
+                output_target_positions=target_dof_pos[:, i],
+            )
+
+            efforts_to_apply[:, i] = efforts
+
+        self.robot.control_dofs_force(efforts_to_apply, self.motor_dofs)
+
         self.scene.step()
         self.step_idx += 1
 
