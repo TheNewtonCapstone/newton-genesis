@@ -34,12 +34,11 @@ class NewtonLocomotionEnv:
         self.obs_scales = obs_cfg["obs_scales"]
         self.reward_scales = reward_cfg["reward_scales"]
 
-        self.logger = Logger()
 
 
         # create scene
         self.scene = gs.Scene(
-            sim_options=gs.options.SimOptions(dt=self.dt, substeps=2),
+            sim_options=gs.options.SimOptions(dt=self.dt),
             viewer_options=gs.options.ViewerOptions(
                 max_FPS=int(0.5 / self.dt),
                 camera_pos=(2.0, 0.0, 2.5),
@@ -57,7 +56,7 @@ class NewtonLocomotionEnv:
         )
 
         # add plain
-        self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
+        self.plane = self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
 
         # add robot
         self.base_init_pos = torch.tensor(self.env_cfg["base_init_pos"], device=self.device)
@@ -88,6 +87,8 @@ class NewtonLocomotionEnv:
 
         # names to indices
         self.motor_dofs = [self.robot.get_joint(name).dof_idx_local for name in self.env_cfg["dof_names"]]
+        self.contact_links = [self.robot.get_link(name).idx for name in self.env_cfg["contact_names"]]
+        self.contact_links = torch.tensor(self.contact_links)
 
         # PD control parameters
         self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motor_dofs)
@@ -132,6 +133,7 @@ class NewtonLocomotionEnv:
         self.extras = dict()  # extra information for logging
 
         self.domain_randomizer = DomainRandomizer(self.scene, self.robot, self.num_envs , self.env_cfg["dof_names"])
+        self.logger = Logger(self.scene)
         self.step_idx = 0
 
     def update_commands(self, envs_idx):
@@ -179,7 +181,12 @@ class NewtonLocomotionEnv:
         self.update_commands(envs_idx)
 
         # check termination and reset
+        contacts = self.robot.get_contacts(self.plane)
+        robot_contacts = torch.tensor(contacts["link_b"])
+        termination_contacts = torch.isin(robot_contacts, self.contact_links).any(dim=1).to(self.device)
+
         self.reset_buf = self.episode_length_buf > self.max_episode_length
+        self.reset_buf |= termination_contacts
         self.reset_buf |= torch.abs(self.base_euler[:, 1]) > self.env_cfg["termination_if_pitch_greater_than"]
         self.reset_buf |= torch.abs(self.base_euler[:, 0]) > self.env_cfg["termination_if_roll_greater_than"]
 
