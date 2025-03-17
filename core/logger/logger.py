@@ -5,8 +5,9 @@ import time
 
 
 class Logger:
-    def __init__(self, log_dir="data_logs"):
+    def __init__(self, scene, log_dir="data_logs"):
         """ Initializes logger and creates necessary directories/files. """
+        self.scene = scene
         self.log_dir = log_dir
         os.makedirs(log_dir, exist_ok=True)
 
@@ -20,9 +21,6 @@ class Logger:
 
         # Initialize files with headers
         self._init_csv_files()
-
-        # Timer start
-        self.start_time = time.time()
 
     def _init_csv_files(self):
         """ Initializes CSV files with appropriate headers. """
@@ -78,23 +76,23 @@ class Logger:
         return ', '.join(map(str, tensor.tolist()))
 
     def log_base_pos_and_ori(self, base_pos, bas_quat):
-        timestamp = int((time.time() - self.start_time) * 1000)
+        timestamp = self.scene.cur_t
         roll, pitch, yaw = self._quat_to_euler(bas_quat)
         data = [timestamp] + base_pos.tolist() + [roll, pitch, yaw]
         self._write_to_csv("base_pos_and_ori", data)
 
     def log_joint_positions(self, joint_positions):
-        timestamp = int((time.time() - self.start_time) * 1000)
+        timestamp = self.scene.cur_t
         data = [timestamp] + joint_positions.tolist()
         self._write_to_csv("joint_positions", data)
 
     def log_joint_velocities(self, joint_velocites):
-        timestamp = int((time.time() - self.start_time) * 1000)
+        timestamp = self.scene.cur_t
         data = [timestamp] + joint_velocites.tolist()
         self._write_to_csv("joint_velocities", data)
 
     def log_joint_efforts(self, joint_efforts):
-        timestamp = int((time.time() - self.start_time) * 1000)
+        timestamp = self.scene.cur_t
         data = [timestamp] + joint_efforts.tolist()
         self._write_to_csv("joint_efforts", data)
 
