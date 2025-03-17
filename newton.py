@@ -71,12 +71,12 @@ def get_cfgs():
             "HR_HAA": 0.0,
             "FL_HFE": 0.8,
             "FR_HFE": 0.8,
-            "HL_HFE": 1.0,
-            "HR_HFE": 1.0,
-            "FL_KFE": -1.5,
-            "FR_KFE": -1.5,
-            "HL_KFE": -1.5,
-            "HR_KFE": -1.5,
+            "HL_HFE": 0.8,
+            "HR_HFE": 0.8,
+            "FL_KFE": -1.4,
+            "FR_KFE": -1.4,
+            "HL_KFE": -1.4,
+            "HR_KFE": -1.4,
         },
         "dof_names": [
             "FR_HAA",
@@ -92,12 +92,23 @@ def get_cfgs():
             "HL_HFE",
             "HL_KFE",
         ],
+        "contact_names": [
+            "base_link",
+            "FR_SHOULDER",
+            "FL_SHOULDER",
+            "HR_SHOULDER",
+            "HL_SHOULDER",
+            "FL_UPPER_LEG",
+            "FR_UPPER_LEG",
+            "HL_UPPER_LEG",
+            "HR_UPPER_LEG",
+        ],
         # PD
-        "kp":20.0,
+        "kp":10.0,
         "kd": 0.5,
         # termination
-        "termination_if_roll_greater_than": 10,  # degree
-        "termination_if_pitch_greater_than": 10,
+        "termination_if_roll_greater_than": 45,  # degree
+        "termination_if_pitch_greater_than": 45,
         # base pose
         "base_init_pos": [0.0, 0.0, 0.30],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
@@ -118,22 +129,22 @@ def get_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.3,
-        "feet_height_target": 0.075,
+        # "base_height_target": 0.3,
+        "feet_height_target": 0.16,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
-            "lin_vel_z": -1.0,
-            "base_height": -50.0,
+            # "lin_vel_z": -1.0,
+            # "base_height": 0.0,
             "action_rate": -0.005,
-            "similar_to_default": -0.1,
+            "similar_to_default": -0.05,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [-0.5, 0.5],
-        "lin_vel_y_range": [-0.5, 0.5],
-        "ang_vel_range": [0, 0],
+        "lin_vel_x_range": [0.2, 0.5],
+        "lin_vel_y_range": [-0.2, 0.2],
+        "ang_vel_range": [0.0, 0.0],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -151,7 +162,7 @@ def setup_experiment(args):
 
 def create_environment(args, env_cfg, obs_cfg, reward_cfg, command_cfg, terrain_cfg):
     """Creates and returns the appropriate environment instance."""
-    if terrain_cfg.curriculum:
+    if args.curriculum:
         return NewtonCurriculumEnv(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg,
             reward_cfg=reward_cfg, command_cfg=command_cfg, terrain_cfg=terrain_cfg,
@@ -213,9 +224,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=200)
+    parser.add_argument("--max_iterations", type=int, default=500)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--eval-onnx", action="store_true", default=False)
+    parser.add_argument("--curriculum", action="store_true", default=False)
     args = parser.parse_args()
 
     # Setup Experiment
