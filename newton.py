@@ -110,7 +110,7 @@ def get_cfgs():
         "termination_if_roll_greater_than": 45,  # degree
         "termination_if_pitch_greater_than": 45,
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.30],
+        "base_init_pos": [0.0, 0.0, 0.40],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -129,15 +129,15 @@ def get_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        # "base_height_target": 0.3,
+        "base_height_target": 0.3,
         "feet_height_target": 0.16,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
-            # "lin_vel_z": -1.0,
-            # "base_height": 0.0,
+            "lin_vel_z": -1.0,
+            "base_height": 0.0,
             "action_rate": -0.005,
-            "similar_to_default": -0.05,
+            "similar_to_default": -0.1,
         },
     }
     command_cfg = {
