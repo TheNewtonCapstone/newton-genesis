@@ -172,6 +172,7 @@ def create_environment(args, env_cfg, obs_cfg, reward_cfg, command_cfg, terrain_
         num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg,
         reward_cfg=reward_cfg, command_cfg=command_cfg,
         urdf_path="assets/newton/newton.urdf",
+        enable_lstm=args.enable_lstm,
         show_viewer=True, device=gs.device
     )
 
@@ -224,10 +225,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=500)
+    parser.add_argument("--max_iterations", type=int, default=100)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--eval-onnx", action="store_true", default=False)
     parser.add_argument("--curriculum", action="store_true", default=False)
+    parser.add_argument("--lstm", action="store_true", default=False)
     args = parser.parse_args()
 
     # Setup Experiment
@@ -245,7 +247,7 @@ def main():
         train_model(runner, env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg, log_dir, args.max_iterations)
     else:
         if args.eval_onnx:
-            evaluate_onnx_model("logs/newton-walking/model_200.onnx", env, args.max_iterations)
+            evaluate_onnx_model("logs/newton-walking/model_100.onnx", env, args.max_iterations)
         else:
             evaluate_model(runner, env, args.max_iterations)
 
