@@ -8,6 +8,8 @@ from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transfo
 from core.controllers.keyboard_controller import KeyboardController
 from core.logger.logger import Logger
 from core.domain_randomizer import DomainRandomizer
+from lib.Genesis.genesis.utils.urdf import merge_fixed_links
+
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
@@ -75,6 +77,8 @@ class NewtonLocomotionEnv:
                 file=urdf_path,
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
+                merge_fixed_links=True,
+                links_to_keep=self.env_cfg["links_to_keep"],
             ),
         )
         self.cam = self.scene.add_camera(
@@ -116,6 +120,7 @@ class NewtonLocomotionEnv:
         # PD control parameters
             self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motor_dofs)
             self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motor_dofs)
+            self.robot.set_dofs_force_range([-self.env_cfg["clip_actions"]] * self.num_actions, [self.env_cfg["clip_actions"]] * self.num_actions, self.motor_dofs)
 
 
         # prepare reward functions and multiply reward scales by dt
@@ -175,6 +180,9 @@ class NewtonLocomotionEnv:
         self.commands[envs_idx, 2] = gs_rand_float(self.command_cfg["ang_vel_range"][0], self.command_cfg["ang_vel_range"][1], (len(envs_idx),), self.device)
 
     def step(self, actions):
+        fixed_pos = torch.zeros((self.num_envs, 4))
+        self.robot.set_dofs_position(fixed_pos, [6,7,8,9])
+
         self.actions = torch.clip(actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"])
         exec_actions = self.last_actions if self.simulate_action_latency else self.actions
         target_dof_pos = exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
@@ -230,7 +238,7 @@ class NewtonLocomotionEnv:
         termination_contacts = torch.isin(robot_contacts, self.contact_links).any(dim=1).to(self.device)
 
         self.reset_buf = self.episode_length_buf > self.max_episode_length
-        self.reset_buf |= termination_contacts
+        # self.reset_buf |= termination_contacts
         self.reset_buf |= torch.abs(self.base_euler[:, 1]) > self.env_cfg["termination_if_pitch_greater_than"]
         self.reset_buf |= torch.abs(self.base_euler[:, 0]) > self.env_cfg["termination_if_roll_greater_than"]
 
@@ -264,8 +272,8 @@ class NewtonLocomotionEnv:
         self.last_dof_vel[:] = self.dof_vel[:]
 
         # Push the robots
-        if self.step_idx % 100 == 0:
-            self.domain_randomizer.push_xy()
+        # if self.step_idx % 100 == 0:
+        #     self.domain_randomizer.push_xy()
 
         if self.logger:
             # base position and orientation
@@ -326,7 +334,7 @@ class NewtonLocomotionEnv:
             )
             self.episode_sums[key][envs_idx] = 0.0
 
-        self.domain_randomizer.randomize(envs_idx)
+        # self.domain_randomizer.randomize(envs_idx)
 
         self.update_commands(envs_idx)
 

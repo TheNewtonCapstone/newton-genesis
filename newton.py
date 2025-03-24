@@ -62,13 +62,14 @@ def get_train_cfg(exp_name, max_iterations):
 
 def get_cfgs():
     env_cfg = {
-        "num_actions": 12,
+        # "num_actions": 12,
+        "num_actions": 8, # 8 DOF
         # joint/link names
         "default_joint_angles": {  # [rad]
-            "FL_HAA": 0.0,
-            "FR_HAA": 0.0,
-            "HL_HAA": 0.0,
-            "HR_HAA": 0.0,
+            # "FL_HAA": 0.0,
+            # "FR_HAA": 0.0,
+            # "HL_HAA": 0.0,
+            # "HR_HAA": 0.0,
             "FL_HFE": 0.8,
             "FR_HFE": 0.8,
             "HL_HFE": 0.8,
@@ -79,17 +80,17 @@ def get_cfgs():
             "HR_KFE": -1.4,
         },
         "dof_names": [
-            "FR_HAA",
+            # "FR_HAA",
+            # "FL_HAA",
+            # "HR_HAA",
+            # "HL_HAA",
             "FR_HFE",
-            "FR_KFE",
-            "FL_HAA",
             "FL_HFE",
-            "FL_KFE",
-            "HR_HAA",
             "HR_HFE",
-            "HR_KFE",
-            "HL_HAA",
             "HL_HFE",
+            "FR_KFE",
+            "FL_KFE",
+            "HR_KFE",
             "HL_KFE",
         ],
         "contact_names": [
@@ -103,6 +104,16 @@ def get_cfgs():
             "HL_UPPER_LEG",
             "HR_UPPER_LEG",
         ],
+        "links_to_keep":[
+            "FL_UPPER_LEG",
+            "FR_UPPER_LEG",
+            "HL_UPPER_LEG",
+            "HR_UPPER_LEG",
+            "FL_LOWER_LEG",
+            "FR_LOWER_LEG",
+            "HL_LOWER_LEG",
+            "HR_LOWER_LEG",
+        ],
         # PD
         "kp":10.0,
         "kd": 0.5,
@@ -110,16 +121,17 @@ def get_cfgs():
         "termination_if_roll_greater_than": 45,  # degree
         "termination_if_pitch_greater_than": 45,
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.40],
+        "base_init_pos": [0.0, 0.0, 0.30],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
         "action_scale": 0.25,
         "simulate_action_latency": True,
-        "clip_actions": 100.0,
+        "clip_actions": 3.0,
     }
     obs_cfg = {
-        "num_obs": 45,
+        # "num_obs": 45,
+        "num_obs": 33, # 8 DOF
         "obs_scales": {
             "lin_vel": 2.0,
             "ang_vel": 0.25,
@@ -136,14 +148,14 @@ def get_cfgs():
             "tracking_ang_vel": 0.2,
             "lin_vel_z": -1.0,
             "base_height": 0.0,
-            "action_rate": -0.005,
+            "action_rate": -0.05,
             "similar_to_default": -0.1,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.2, 0.5],
-        "lin_vel_y_range": [-0.2, 0.2],
+        "lin_vel_x_range": [0.0, 0.5],
+        "lin_vel_y_range": [0.0, 0.0],
         "ang_vel_range": [0.0, 0.0],
     }
 
@@ -229,7 +241,7 @@ def main():
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--eval-onnx", action="store_true", default=False)
     parser.add_argument("--curriculum", action="store_true", default=False)
-    parser.add_argument("--lstm", action="store_true", default=False)
+    parser.add_argument("--enable-lstm", action="store_true", default=False)
     args = parser.parse_args()
 
     # Setup Experiment

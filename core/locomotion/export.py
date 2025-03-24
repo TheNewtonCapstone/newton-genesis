@@ -11,7 +11,7 @@ import pprint
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
-    parser.add_argument("--ckpt", type=int, default=200)
+    parser.add_argument("--ckpt", type=int, default=1000)
     args = parser.parse_args()
 
     gs.init()
