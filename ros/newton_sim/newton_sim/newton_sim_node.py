@@ -162,13 +162,19 @@ class NewtonRosNode(Node):
         return env_cfg, obs_cfg, reward_cfg, command_cfg
 
 
+    def velocities_update_callback(self, msg):
+        pass
+
+    def position_update_callback(self, msg):
+        pass
+
+
     def simulation_step(self):
         with torch.no_grad():
             if self.use_onnx:
                 # Convert PyTorch tensor to numpy for ONNX
                 obs = self.obs.cpu().numpy().astype(np.float32)
 
-                # Run ONNX inference
                 actions_np = self.session.run([self.output_name], {self.input_name: obs})[0]
 
                 # Convert back to tensor
@@ -176,7 +182,6 @@ class NewtonRosNode(Node):
             else:
                 actions = self.policy(self.obs)
 
-        # Publish model's recommended actions
         self.publish_actions(actions)
 
         # Step the simulation with the same actions
