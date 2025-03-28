@@ -84,14 +84,14 @@ def get_cfgs():
             # "FL_HAA",
             # "HR_HAA",
             # "HL_HAA",
-            "FR_HFE",
             "FL_HFE",
-            "HR_HFE",
-            "HL_HFE",
-            "FR_KFE",
             "FL_KFE",
-            "HR_KFE",
+            "FR_HFE",
+            "FR_KFE",
+            "HL_HFE",
             "HL_KFE",
+            "HR_HFE",
+            "HR_KFE",
         ],
         "contact_names": [
             "base_link",
@@ -103,6 +103,12 @@ def get_cfgs():
             "FR_UPPER_LEG",
             "HL_UPPER_LEG",
             "HR_UPPER_LEG",
+        ],
+        "feet_names": [
+            "FL_LOWER_LEG",
+            "FR_LOWER_LEG",
+            "HL_LOWER_LEG",
+            "HR_LOWER_LEG",
         ],
         "links_to_keep":[
             "FL_UPPER_LEG",
@@ -118,19 +124,20 @@ def get_cfgs():
         "kp":10.0,
         "kd": 0.5,
         # termination
-        "termination_if_roll_greater_than": 45,  # degree
-        "termination_if_pitch_greater_than": 45,
+        "termination_if_roll_greater_than": 10,  # degree
+        "termination_if_pitch_greater_than": 10,
         # base pose
-        "base_init_pos": [0.0, 0.0, 0.30],
+        "base_init_pos": [0.0, 0.0, 0.40],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
         "action_scale": 0.25,
         "simulate_action_latency": True,
-        "clip_actions": 3.0,
+        "clip_actions": 100.0,
+        "random_reset_pose": False,
     }
     obs_cfg = {
-        # "num_obs": 45,
+        # "num_obs": 45, # 12 DOF
         "num_obs": 33, # 8 DOF
         "obs_scales": {
             "lin_vel": 2.0,
@@ -142,19 +149,20 @@ def get_cfgs():
     reward_cfg = {
         "tracking_sigma": 0.25,
         "base_height_target": 0.3,
-        "feet_height_target": 0.16,
+        "feet_height_target": 0.1,
         "reward_scales": {
-            "tracking_lin_vel": 1.0,
+            "tracking_lin_vel": 2.0,
             "tracking_ang_vel": 0.2,
             "lin_vel_z": -1.0,
-            "base_height": 0.0,
+            "base_height": -50.0,
             "action_rate": -0.05,
-            "similar_to_default": -0.1,
+            "similar_to_default": -0.05,
+            "feet_height": -4.0,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.0, 0.5],
+        "lin_vel_x_range": [0.0, 1.0],
         "lin_vel_y_range": [0.0, 0.0],
         "ang_vel_range": [0.0, 0.0],
     }
@@ -237,7 +245,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
-    parser.add_argument("--max_iterations", type=int, default=100)
+    parser.add_argument("--max_iterations", type=int, default=700)
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--eval-onnx", action="store_true", default=False)
     parser.add_argument("--curriculum", action="store_true", default=False)
@@ -259,7 +267,7 @@ def main():
         train_model(runner, env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg, log_dir, args.max_iterations)
     else:
         if args.eval_onnx:
-            evaluate_onnx_model("logs/newton-walking/model_100.onnx", env, args.max_iterations)
+            evaluate_onnx_model("logs/newton-walking/model_1000.onnx", env, args.max_iterations)
         else:
             evaluate_model(runner, env, args.max_iterations)
 

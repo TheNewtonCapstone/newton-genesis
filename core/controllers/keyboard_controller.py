@@ -15,7 +15,9 @@ class KeyboardController:
             keyboard.Key.up: False,
             keyboard.Key.down: False,
             keyboard.Key.left: False,
-            keyboard.Key.right: False
+            keyboard.Key.right: False,
+            keyboard.Key.ctrl_r: False,
+            keyboard.Key.ctrl_l: False,
         }
         self.active = False  # Control mode toggle
         self.listener = keyboard.Listener(on_press=self.on_press, on_release=self.on_release)
@@ -50,7 +52,10 @@ class KeyboardController:
                 self.current_command[1] += self.command_scale  # Rotate left
             if self.key_state[keyboard.Key.right]:
                 self.current_command[1] -= self.command_scale  # Rotate right
-
+            if self.key_state[keyboard.Key.ctrl_r]:
+                self.current_command[2] += self.command_scale
+            if self.key_state[keyboard.Key.ctrl_l]:
+                self.current_command[2] -= self.command_scale
     def get_command(self):
         """ Retrieve the current velocity command. """
         return self.current_command if self.active else None

@@ -17,6 +17,7 @@ class Logger:
             "joint_efforts": os.path.join(log_dir, "joint_efforts.csv"),
             "joint_velocities": os.path.join(log_dir, "joint_velocities.csv"),
             "joint_positions": os.path.join(log_dir, "joint_positions.csv"),
+            "actions": os.path.join(log_dir, "actions.csv"),
         }
 
         # Initialize files with headers
@@ -51,7 +52,15 @@ class Logger:
                                 "FR_KFE",
                                 "FL_KFE",
                                 "HR_KFE",
-                                "HL_KFE", ]
+                                "HL_KFE", ],
+            "actions": ["Time(ms)", "FR_HFE",
+                        "FL_HFE",
+                        "HR_HFE",
+                        "HL_HFE",
+                        "FR_KFE",
+                        "FL_KFE",
+                        "HR_KFE",
+                        "HL_KFE", ],
         }
 
         for log_type, file_path in self.files.items():
@@ -83,6 +92,11 @@ class Logger:
         timestamp = self.scene.cur_t
         data = [timestamp] + joint_efforts.tolist()
         self._write_to_csv("joint_efforts", data)
+
+    def log_actions(self, actions):
+        timestamp = self.scene.cur_t
+        data = [timestamp] + actions.tolist()
+        self._write_to_csv("actions", data)
 
     def _write_to_csv(self, log_type, data):
         """ Writes data to a CSV file. """

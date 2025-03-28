@@ -9,7 +9,7 @@
     <!-- BASE LINK INERTIAL -->
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00082966 0.00000105 -0.00060210"/>
-      <mass value="1.25123725"/>
+      <mass value="0.7"/>
       <!-- The base is extremely symmetrical. -->
       <inertia ixx="0.00266220" ixy="-0.00003684" ixz="-0.00001716" iyy="0.01388510" iyz="-0.00000009" izz="0.01605370"/>
     </inertial>
@@ -40,7 +40,7 @@
     </contact>
   </link>
   <!-- END BASE LINK -->
-  <joint name="FL_HAA" type="revolute">
+  <joint name="FL_HAA" type="fixed">
     <parent link="base_link"/>
     <child link="FL_SHOULDER"/>
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
@@ -72,7 +72,7 @@
       </material>
     </collision>
     <inertial>
-      <mass value="0.14196048"/>
+      <mass value="0.28196048"/>
       <!-- HAA body inertia -->
       <origin rpy="0 0 0" xyz="-0.09407251 -0.00438935 0.00001384"/>
       <inertia ixx="0.00002802" ixy="0.00003687" ixz="-0.00000009" iyy="0.00038264" iyz="0.00000000" izz="0.00038050"/>
@@ -91,7 +91,7 @@
   <link name="FL_UPPER_LEG">
     <!-- Left upper leg inertia -->
     <inertial>
-      <mass value="0.14737324"/>
+      <mass value="0.28737324"/>
       <origin rpy="0 0 0" xyz="0.00001530 0.01767640 -0.07838230"/>
       <inertia ixx="0.00041540" ixy="0.00000000" ixz="0.00000010" iyy="0.00041637" iyz="-0.00004589" izz="0.00002982"/>
     </inertial>
@@ -188,7 +188,7 @@
     </inertial>
   </link>
   <!-- END FOOT LINK -->
-  <joint name="FR_HAA" type="revolute">
+  <joint name="FR_HAA" type="fixed">
     <parent link="base_link"/>
     <child link="FR_SHOULDER"/>
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
@@ -220,7 +220,7 @@
       </material>
     </collision>
     <inertial>
-      <mass value="0.14196048"/>
+      <mass value="0.28196048"/>
       <!-- HAA body inertia -->
       <origin rpy="0 0 0" xyz="-0.09407251 0.00438935 -0.00001384"/>
       <inertia ixx="0.00002802" ixy="-0.00003687" ixz="0.00000009" iyy="0.00038264" iyz="0.00000000" izz="0.00038050"/>
@@ -239,7 +239,7 @@
   <link name="FR_UPPER_LEG">
     <!-- Right upper leg inertia -->
     <inertial>
-      <mass value="0.14737324"/>
+      <mass value="0.28737324"/>
       <origin rpy="0 0 0" xyz="-0.00001530 -0.01767640 -0.07838230"/>
       <inertia ixx="0.00041540" ixy="0.00000000" ixz="-0.00000010" iyy="0.00041637" iyz="0.00004589" izz="0.00002982"/>
     </inertial>
@@ -336,7 +336,7 @@
     </inertial>
   </link>
   <!-- END FOOT LINK -->
-  <joint name="HL_HAA" type="revolute">
+  <joint name="HL_HAA" type="fixed">
     <parent link="base_link"/>
     <child link="HL_SHOULDER"/>
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
@@ -368,7 +368,7 @@
       </material>
     </collision>
     <inertial>
-      <mass value="0.14196048"/>
+      <mass value="0.28196048"/>
       <!-- HAA body inertia -->
       <origin rpy="0 0 0" xyz="0.09407251 -0.00438935 -0.00001384"/>
       <inertia ixx="0.00002802" ixy="-0.00003687" ixz="-0.00000009" iyy="0.00038264" iyz="0.00000000" izz="0.00038050"/>
@@ -387,7 +387,7 @@
   <link name="HL_UPPER_LEG">
     <!-- Left upper leg inertia -->
     <inertial>
-      <mass value="0.14737324"/>
+      <mass value="0.28737324"/>
       <origin rpy="0 0 0" xyz="0.00001530 0.01767640 -0.07838230"/>
       <inertia ixx="0.00041540" ixy="0.00000000" ixz="0.00000010" iyy="0.00041637" iyz="-0.00004589" izz="0.00002982"/>
     </inertial>
@@ -484,7 +484,7 @@
     </inertial>
   </link>
   <!-- END FOOT LINK -->
-  <joint name="HR_HAA" type="revolute">
+  <joint name="HR_HAA" type="fixed">
     <parent link="base_link"/>
     <child link="HR_SHOULDER"/>
     <limit effort="1000" lower="-10" upper="10" velocity="1000"/>
@@ -516,7 +516,7 @@
       </material>
     </collision>
     <inertial>
-      <mass value="0.14196048"/>
+      <mass value="0.28196048"/>
       <!-- HAA body inertia -->
       <origin rpy="0 0 0" xyz="0.09407251 0.00438935 0.00001384"/>
       <inertia ixx="0.00002802" ixy="0.00003687" ixz="0.00000009" iyy="0.00038264" iyz="0.00000000" izz="0.00038050"/>
@@ -535,7 +535,7 @@
   <link name="HR_UPPER_LEG">
     <!-- Right upper leg inertia -->
     <inertial>
-      <mass value="0.14737324"/>
+      <mass value="0.28737324"/>
       <origin rpy="0 0 0" xyz="-0.00001530 -0.01767640 -0.07838230"/>
       <inertia ixx="0.00041540" ixy="0.00000000" ixz="-0.00000010" iyy="0.00041637" iyz="0.00004589" izz="0.00002982"/>
     </inertial>

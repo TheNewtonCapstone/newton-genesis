@@ -10,8 +10,8 @@ import genesis as gs
 import pprint
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
-    parser.add_argument("--ckpt", type=int, default=1000)
+    parser.add_argument("-e", "--exp_name", type=str, default="newton-no-haa")
+    parser.add_argument("--ckpt", type=int, default=700)
     args = parser.parse_args()
 
     gs.init()

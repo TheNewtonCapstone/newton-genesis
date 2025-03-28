@@ -50,7 +50,7 @@ class DomainRandomizer:
 
     def push_xy(self):
         # Generate random forces in x and y, keeping z = 0
-        random_force = torch.randn(self.num_envs, 1, 3) * 75  # Scaling the randomness
+        random_force = torch.randn(self.num_envs, 1, 3) * 50  # Scaling the randomness
         random_force[:, :, 2] = 0  # No force applied in the z-axis
 
         print("Random force applied:", random_force)
