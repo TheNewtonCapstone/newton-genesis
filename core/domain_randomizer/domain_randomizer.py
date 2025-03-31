@@ -88,7 +88,7 @@ class DomainRandomizer:
         Args:
             scene (gs.Scene): The physics simulation scene containing terrain entities.
         """
-        min_friction = 0.01  # Minimum allowed friction
+        min_friction = 0.05  # Minimum allowed friction
         max_friction = 1.0  # Maximum allowed friction
 
         for entity in self.scene.entities:

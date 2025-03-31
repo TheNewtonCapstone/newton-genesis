@@ -12,9 +12,8 @@ from .sub_terrain import SubTerrain
 # Note: Make sure that any utilities such as gs.raise_exception and mu.is_approx_multiple
 # are imported or available in your working environment.
 
-class Terrain():
+class Terrain:
     """
-    Terrain class extending TerrainMorph for creating a rigid terrain.
     The terrain can be constructed as a grid of sub-terrains or from a height field.
     It supports curriculum learning by varying terrain difficulty across sub-terrains.
     """
@@ -66,10 +65,7 @@ class Terrain():
         """
         Build the terrain by constructing subterrains based on the curriculum.
         """
-        if self.curriculum:
-            self._construct_curriculum()
-        else:
-            raise NotImplementedError("Custom terrain construction is not yet implemented.")
+        self._construct_curriculum()
 
     # ---------------------------------------------------------------------------
     # Public API: Get Subterrain Origins
@@ -117,8 +113,8 @@ class Terrain():
 
         # Compute parameters based on difficulty.
         slope = int(difficulty * 0.4)
-        step_height = 0.05 + 0.18 * difficulty
-        discrete_obstacles_height = 0.05 + difficulty * 0.2
+        step_height = 0.05 + 0.1 * difficulty
+        # discrete_obstacles_height = 0.05 + difficulty * 0.2
         stepping_stones_size = 1.5 * (1.05 - difficulty)
         stone_distance = 0.05 if difficulty == 0 else 0.1
         gap_size = 1.0 * difficulty  # Not used in current generators
@@ -128,9 +124,9 @@ class Terrain():
         if choice == "smooth_slope":
             # For smooth/pyramid sloped terrain, adjust slope sign based on choice.
             slope *= -1
-            pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.0)
+            pyramid_sloped_terrain(terrain, slope=slope, platform_size=2.0)
         elif choice == "rough_slope":
-            pyramid_sloped_terrain(terrain, slope=slope, platform_size=3.0)
+            pyramid_sloped_terrain(terrain, slope=slope, platform_size=2.0)
             random_uniform_terrain(
                 terrain,
                 min_height=-0.05,
@@ -141,18 +137,18 @@ class Terrain():
         elif choice in ["stairs_up", "stairs_down"]:
             # For stairs terrain, adjust step height sign based on choice.
             step_height *= -1 if choice == "stairs_down" else 1
-            pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=3.0)
+            pyramid_stairs_terrain(terrain, step_width=0.31, step_height=step_height, platform_size=2.0)
         elif choice == "discrete":
             num_rectangles = 20
             rectangle_min_size = 1.0
             rectangle_max_size = 2.0
             discrete_obstacles_terrain(
                 terrain,
-                discrete_obstacles_height,
+                step_height,
                 rectangle_min_size,
                 rectangle_max_size,
                 num_rectangles,
-                platform_size=3.0,
+                platform_size=2.0,
             )
         elif choice == "stepping_stones":
             stepping_stones_terrain(
@@ -160,7 +156,7 @@ class Terrain():
                 stone_size=stepping_stones_size,
                 stone_distance=stone_distance,
                 max_height=0.0,
-                platform_size=4.0,
+                platform_size=2.0,
             )
         else:
             raise ValueError(f"Invalid terrain choice: {choice}")

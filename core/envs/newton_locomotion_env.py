@@ -1,18 +1,21 @@
+from typing import List
+
 import torch
 import math
 import genesis as gs
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
-
 from core.controllers.keyboard_controller import KeyboardController
 from core.logger.logger import Logger
+
 from core.domain_randomizer import DomainRandomizer
+
 
 def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
 class NewtonLocomotionEnv:
-    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, urdf_path=None, show_viewer=False, device="cuda"):
+    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, urdf_path=None, show_viewer=False, enable_lstm = False, device="cuda"):
         self.device = torch.device(device)
         self.keyboard_controller = KeyboardController(command_scale=command_cfg["lin_vel_x_range"][1])
 
@@ -30,16 +33,14 @@ class NewtonLocomotionEnv:
         self.obs_cfg = obs_cfg
         self.reward_cfg = reward_cfg
         self.command_cfg = command_cfg
+        self.enable_lstm = enable_lstm
 
         self.obs_scales = obs_cfg["obs_scales"]
         self.reward_scales = reward_cfg["reward_scales"]
 
-        self.logger = Logger()
-
-
         # create scene
         self.scene = gs.Scene(
-            sim_options=gs.options.SimOptions(dt=self.dt, substeps=2),
+            sim_options=gs.options.SimOptions(dt=self.dt),
             viewer_options=gs.options.ViewerOptions(
                 max_FPS=int(0.5 / self.dt),
                 camera_pos=(2.0, 0.0, 2.5),
@@ -57,7 +58,7 @@ class NewtonLocomotionEnv:
         )
 
         # add plain
-        self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
+        self.plane = self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
 
         # add robot
         self.base_init_pos = torch.tensor(self.env_cfg["base_init_pos"], device=self.device)
@@ -88,10 +89,46 @@ class NewtonLocomotionEnv:
 
         # names to indices
         self.motor_dofs = [self.robot.get_joint(name).dof_idx_local for name in self.env_cfg["dof_names"]]
+        self.feet_links = [self.robot.get_link(name).idx for name in self.env_cfg["feet_names"]]
+        self.feet_links = torch.tensor(self.feet_links)
 
+        if self.enable_lstm:
+            from core.actuators import LSTMActuator
+
+            self.hfe_actuators: List[LSTMActuator] = []
+            self.kfe_actuators: List[LSTMActuator] = []
+            hfe_model_path = "assets/newton/models/lstm_hfe.pth"
+            kfe_model_path = "assets/newton/models/lstm_kfe.pth"
+            model_params = {
+                "hidden_size": 32,
+                "num_layers": 1
+            }
+
+            for i in range(4):
+                actuator = LSTMActuator(
+                    scene=self.scene,
+                    motor_model_path=hfe_model_path,
+                    model_params=model_params,
+                    device=gs.device,
+                )
+                actuator.build()
+                self.hfe_actuators.append(actuator)
+
+            for i in range(4):
+                actuator = LSTMActuator(
+                    scene=self.scene,
+                    motor_model_path=kfe_model_path,
+                    model_params=model_params,
+                    device=gs.device,
+                )
+                actuator.build()
+                self.kfe_actuators.append(actuator)
+        else:
         # PD control parameters
-        self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motor_dofs)
-        self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motor_dofs)
+            self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motor_dofs)
+            self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motor_dofs)
+            self.robot.set_dofs_force_range([-self.env_cfg["clip_actions"]] * self.num_actions, [self.env_cfg["clip_actions"]] * self.num_actions, self.motor_dofs)
+
 
         # prepare reward functions and multiply reward scales by dt
         self.reward_functions, self.episode_sums = dict(), dict()
@@ -132,6 +169,7 @@ class NewtonLocomotionEnv:
         self.extras = dict()  # extra information for logging
 
         self.domain_randomizer = DomainRandomizer(self.scene, self.robot, self.num_envs , self.env_cfg["dof_names"])
+        self.logger = Logger(self.scene)
         self.step_idx = 0
 
     def update_commands(self, envs_idx):
@@ -152,7 +190,33 @@ class NewtonLocomotionEnv:
         self.actions = torch.clip(actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"])
         exec_actions = self.last_actions if self.simulate_action_latency else self.actions
         target_dof_pos = exec_actions * self.env_cfg["action_scale"] + self.default_dof_pos
-        self.robot.control_dofs_position(target_dof_pos, self.motor_dofs)
+        target_dof_pos[:] = torch.fmod(target_dof_pos[:] + math.pi, 2 * math.pi) - math.pi
+        # if target_dof_pos[:]
+
+        if self.enable_lstm:
+            # Implementing Actuators
+            output_current_positions = self.robot.get_dofs_position(self.motor_dofs)
+            output_current_velocities = self.robot.get_dofs_velocity(self.motor_dofs)
+
+            efforts_to_apply = torch.zeros_like(self.actions)
+
+            for i in range(self.env_cfg["num_actions"]):
+                if i % 2 == 0:
+                    actuator = self.hfe_actuators[i // 2]
+                else:
+                    actuator = self.kfe_actuators[i // 2]
+                efforts = actuator.step(
+                    output_current_positions=output_current_positions[:, i],
+                    output_current_velocities=output_current_velocities[:, i],
+                    output_target_positions=target_dof_pos[:, i],
+                )
+
+                efforts_to_apply[:, i] = efforts
+
+            self.robot.control_dofs_force(efforts_to_apply, self.motor_dofs)
+        else:
+            self.robot.control_dofs_position(target_dof_pos, self.motor_dofs)
+
         self.scene.step()
         self.step_idx += 1
 
@@ -178,7 +242,6 @@ class NewtonLocomotionEnv:
         )
         self.update_commands(envs_idx)
 
-        # check termination and reset
         self.reset_buf = self.episode_length_buf > self.max_episode_length
         self.reset_buf |= torch.abs(self.base_euler[:, 1]) > self.env_cfg["termination_if_pitch_greater_than"]
         self.reset_buf |= torch.abs(self.base_euler[:, 0]) > self.env_cfg["termination_if_roll_greater_than"]
@@ -230,6 +293,9 @@ class NewtonLocomotionEnv:
             joint_efforts = self.robot.get_dofs_force(self.motor_dofs)[0]
             self.logger.log_joint_efforts(joint_efforts)
 
+            # actions
+            self.logger.log_actions(self.actions[0])
+
         return self.obs_buf, None, self.rew_buf, self.reset_buf, self.extras
 
     def get_observations(self):
@@ -260,6 +326,9 @@ class NewtonLocomotionEnv:
         self.base_lin_vel[envs_idx] = 0
         self.base_ang_vel[envs_idx] = 0
         self.robot.zero_all_dofs_velocity(envs_idx)
+        if self.env_cfg["random_reset_pose"]:
+            random_dof_pos = (torch.rand_like(self.dof_pos[envs_idx]) * torch.pi * 2) - torch.pi
+            self.robot.set_dofs_position(random_dof_pos, self.motor_dofs, envs_idx=envs_idx)
 
         # reset buffers
         self.last_actions[envs_idx] = 0.0
@@ -283,6 +352,14 @@ class NewtonLocomotionEnv:
         self.reset_buf[:] = True
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         return self.obs_buf, None
+
+    def _get_contact_termination(self):
+        # check termination and reset
+        contacts = self.robot.get_contacts(self.plane)
+        robot_contacts = torch.tensor(contacts["link_b"])
+        termination_contacts = torch.isin(robot_contacts, self.feet_links).any(dim=1).to(self.device)
+        return termination_contacts
+
 
     # ------------ reward functions----------------
     def _reward_tracking_lin_vel(self):
@@ -310,3 +387,12 @@ class NewtonLocomotionEnv:
     def _reward_base_height(self):
         # Penalize base height away from target
         return torch.square(self.base_pos[:, 2] - self.reward_cfg["base_height_target"])
+
+    def _reward_feet_height(self):
+        # Penalize feet height away from target
+        ankle_height = self.robot.get_links_pos()[:, -4:, 2]
+        ankle_angle_quat = self.robot.get_links_quat()[:, -4:]
+        ankle_angle = quat_to_xyz(ankle_angle_quat)
+        feet_height = ankle_height + torch.sin(ankle_angle[:, :, 1]) * 0.175
+
+        return torch.sum(torch.square(feet_height - self.reward_cfg["feet_height_target"]), dim=1)

@@ -116,6 +116,7 @@ def main():
                 domain_rand.reset()
             else:
                 domain_rand.randomize()
+                domain_rand.push_xy()
 
             reset = not reset
 
