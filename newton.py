@@ -9,6 +9,8 @@ import onnxruntime as ort
 import numpy as np
 
 from rsl_rl.runners import OnPolicyRunner
+
+from core.envs import NewtonLocomotionAltEnv
 from core.envs.newton_curriculum_env import NewtonCurriculumEnv
 from core.envs.newton_locomotion_env import NewtonLocomotionEnv
 from core.config.terrain import TerrainConfig
@@ -60,116 +62,6 @@ def get_train_cfg(exp_name, max_iterations):
     return train_cfg_dict
 
 
-def get_cfgs():
-    env_cfg = {
-        # "num_actions": 12,
-        "num_actions": 8, # 8 DOF
-        # joint/link names
-        "default_joint_angles": {  # [rad]
-            # "FL_HAA": 0.0,
-            # "FR_HAA": 0.0,
-            # "HL_HAA": 0.0,
-            # "HR_HAA": 0.0,
-            "FL_HFE": 0.8,
-            "FR_HFE": 0.8,
-            "HL_HFE": 0.8,
-            "HR_HFE": 0.8,
-            "FL_KFE": -1.4,
-            "FR_KFE": -1.4,
-            "HL_KFE": -1.4,
-            "HR_KFE": -1.4,
-        },
-        "dof_names": [
-            # "FR_HAA",
-            # "FL_HAA",
-            # "HR_HAA",
-            # "HL_HAA",
-            "FL_HFE",
-            "FL_KFE",
-            "FR_HFE",
-            "FR_KFE",
-            "HL_HFE",
-            "HL_KFE",
-            "HR_HFE",
-            "HR_KFE",
-        ],
-        "contact_names": [
-            "base_link",
-            "FR_SHOULDER",
-            "FL_SHOULDER",
-            "HR_SHOULDER",
-            "HL_SHOULDER",
-            "FL_UPPER_LEG",
-            "FR_UPPER_LEG",
-            "HL_UPPER_LEG",
-            "HR_UPPER_LEG",
-        ],
-        "feet_names": [
-            "FL_LOWER_LEG",
-            "FR_LOWER_LEG",
-            "HL_LOWER_LEG",
-            "HR_LOWER_LEG",
-        ],
-        "links_to_keep":[
-            "FL_UPPER_LEG",
-            "FR_UPPER_LEG",
-            "HL_UPPER_LEG",
-            "HR_UPPER_LEG",
-            "FL_LOWER_LEG",
-            "FR_LOWER_LEG",
-            "HL_LOWER_LEG",
-            "HR_LOWER_LEG",
-        ],
-        # PD
-        "kp":10.0,
-        "kd": 0.5,
-        # termination
-        "termination_if_roll_greater_than": 10,  # degree
-        "termination_if_pitch_greater_than": 10,
-        # base pose
-        "base_init_pos": [0.0, 0.0, 0.40],
-        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
-        "episode_length_s": 20.0,
-        "resampling_time_s": 4.0,
-        "action_scale": 0.25,
-        "simulate_action_latency": True,
-        "clip_actions": 100.0,
-        "random_reset_pose": False,
-    }
-    obs_cfg = {
-        # "num_obs": 45, # 12 DOF
-        "num_obs": 33, # 8 DOF
-        "obs_scales": {
-            "lin_vel": 2.0,
-            "ang_vel": 0.25,
-            "dof_pos": 1.0,
-            "dof_vel": 0.05,
-        },
-    }
-    reward_cfg = {
-        "tracking_sigma": 0.25,
-        "base_height_target": 0.3,
-        "feet_height_target": 0.1,
-        "reward_scales": {
-            "tracking_lin_vel": 2.0,
-            "tracking_ang_vel": 0.2,
-            "lin_vel_z": -1.0,
-            "base_height": -50.0,
-            "action_rate": -0.05,
-            "similar_to_default": -0.05,
-            "feet_height": -4.0,
-        },
-    }
-    command_cfg = {
-        "num_commands": 3,
-        "lin_vel_x_range": [0.0, 1.0],
-        "lin_vel_y_range": [0.0, 0.0],
-        "ang_vel_range": [0.0, 0.0],
-    }
-
-    return env_cfg, obs_cfg, reward_cfg, command_cfg
-
-
 def setup_experiment(args):
     """Initializes logging and configuration settings."""
     gs.init(logging_level="warning")
@@ -180,25 +72,44 @@ def setup_experiment(args):
     return log_dir
 
 
-def create_environment(args, env_cfg, obs_cfg, reward_cfg, command_cfg, terrain_cfg):
+def create_environment(args, terrain_cfg=None):
     """Creates and returns the appropriate environment instance."""
     if args.curriculum:
+        if terrain_cfg is None:
+            terrain_cfg = TerrainConfig()
         return NewtonCurriculumEnv(
-            num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg, command_cfg=command_cfg, terrain_cfg=terrain_cfg,
-            show_viewer=True, device=gs.device
+            num_envs=args.num_envs,
+            terrain_cfg=terrain_cfg,
+            show_viewer=True,
+            device=gs.device
         )
-    return NewtonLocomotionEnv(
-        num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg,
-        reward_cfg=reward_cfg, command_cfg=command_cfg,
-        urdf_path="assets/newton/newton.urdf",
-        enable_lstm=args.enable_lstm,
-        show_viewer=True, device=gs.device
-    )
 
+    if args.task_name == "locomotion":
+        return NewtonLocomotionEnv(
+            num_envs=args.num_envs,
+            urdf_path="assets/newton/newton.urdf",
+            enable_lstm=args.enable_lstm,
+            show_viewer=True,
+            device=gs.device
+        )
+    elif args.task_name == "locomotion_alt":
+        return NewtonLocomotionAltEnv(
+            num_envs=args.num_envs,
+            urdf_path="assets/newton/newton.urdf",
+            enable_lstm=args.enable_lstm,
+            show_viewer=True,
+            device=gs.device
+        )
 
-def train_model(runner, env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg, log_dir, max_iterations):
+def train_model(runner, env, train_cfg, log_dir, max_iterations):
     """Trains the model using OnPolicyRunner."""
+    # Get the environment configurations directly from the environment
+    env_cfg = env.env_cfg
+    obs_cfg = env.obs_cfg
+    reward_cfg = env.reward_cfg
+    command_cfg = env.command_cfg
+
+    # Save configurations
     pickle.dump([env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg], open(f"{log_dir}/cfgs.pkl", "wb"))
     runner.learn(num_learning_iterations=max_iterations, init_at_random_ep_len=True)
 
@@ -239,6 +150,7 @@ def evaluate_onnx_model(onnx_model_path, env, max_iterations):
 
             obs, _, rews, dones, infos = env.step(actions)
 
+
 def main():
     """Main function to parse arguments and run training or evaluation."""
     # Argument Parsing
@@ -246,25 +158,25 @@ def main():
     parser.add_argument("-e", "--exp_name", type=str, default="newton-walking")
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
     parser.add_argument("--max_iterations", type=int, default=700)
+    parser.add_argument("--task-name", type=str, default="locomotion")
     parser.add_argument("--train", action="store_true", default=False)
     parser.add_argument("--eval-onnx", action="store_true", default=False)
     parser.add_argument("--curriculum", action="store_true", default=False)
     parser.add_argument("--enable-lstm", action="store_true", default=False)
+    parser.add_argument("--custom-config", action="store_true", default=False)
     args = parser.parse_args()
 
     # Setup Experiment
     log_dir = setup_experiment(args)
-    env_cfg, obs_cfg, reward_cfg, command_cfg = get_cfgs()
     train_cfg = get_train_cfg(args.exp_name, args.max_iterations)
-    terrain_cfg = TerrainConfig()
 
-    # Create Environment
-    env = create_environment(args, env_cfg, obs_cfg, reward_cfg, command_cfg, terrain_cfg)
+    # Create Environment - environment now manages its own configuration
+    env = create_environment(args)
 
     # Train or Evaluate
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
     if args.train:
-        train_model(runner, env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg, log_dir, args.max_iterations)
+        train_model(runner, env, train_cfg, log_dir, args.max_iterations)
     else:
         if args.eval_onnx:
             evaluate_onnx_model("logs/newton-walking/model_1000.onnx", env, args.max_iterations)

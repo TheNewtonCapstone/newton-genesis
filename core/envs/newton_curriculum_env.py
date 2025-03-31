@@ -1,11 +1,14 @@
 import math
-import torch
+from typing import Dict, Any, Optional
+
 import genesis as gs
+import torch
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
 
 from core.config import TerrainConfig
-from core.terrain import Terrain
+from core.controllers import KeyboardController
 from core.domain_randomizer import DomainRandomizer
+from core.terrain import Terrain
 
 
 def gs_rand_float(lower, upper, shape, device):
@@ -13,28 +16,151 @@ def gs_rand_float(lower, upper, shape, device):
 
 
 class NewtonCurriculumEnv:
-    def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, terrain_cfg: TerrainConfig = None,
-                 show_viewer=False, device="cuda"):
+    @classmethod
+    def get_default_env_config(cls) -> Dict[str, Any]:
+        """Get default environment configuration."""
+        return {
+            "num_actions": 8,  # 8 DOF
+            "default_joint_angles": {  # [rad]
+                "FL_HFE": 0.8,
+                "FR_HFE": 0.8,
+                "HL_HFE": 0.8,
+                "HR_HFE": 0.8,
+                "FL_KFE": -1.4,
+                "FR_KFE": -1.4,
+                "HL_KFE": -1.4,
+                "HR_KFE": -1.4,
+            },
+            "dof_names": [
+                "FL_HFE",
+                "FL_KFE",
+                "FR_HFE",
+                "FR_KFE",
+                "HL_HFE",
+                "HL_KFE",
+                "HR_HFE",
+                "HR_KFE",
+            ],
+            "contact_names": [
+                "base_link",
+                "FR_SHOULDER",
+                "FL_SHOULDER",
+                "HR_SHOULDER",
+                "HL_SHOULDER",
+                "FL_UPPER_LEG",
+                "FR_UPPER_LEG",
+                "HL_UPPER_LEG",
+                "HR_UPPER_LEG",
+            ],
+            "feet_names": [
+                "FL_LOWER_LEG",
+                "FR_LOWER_LEG",
+                "HL_LOWER_LEG",
+                "HR_LOWER_LEG",
+            ],
+            "links_to_keep": [
+                "FL_UPPER_LEG",
+                "FR_UPPER_LEG",
+                "HL_UPPER_LEG",
+                "HR_UPPER_LEG",
+                "FL_LOWER_LEG",
+                "FR_LOWER_LEG",
+                "HL_LOWER_LEG",
+                "HR_LOWER_LEG",
+            ],
+            # PD
+            "kp": 10.0,
+            "kd": 0.5,
+            # termination
+            "termination_if_roll_greater_than": 10,  # degree
+            "termination_if_pitch_greater_than": 10,
+            # base pose
+            "base_init_pos": [0.0, 0.0, 0.30],
+            "base_init_quat": [1.0, 0.0, 0.0, 0.0],
+            "episode_length_s": 20.0,
+            "resampling_time_s": 4.0,
+            "action_scale": 0.25,
+            "simulate_action_latency": True,
+            "clip_actions": 100.0,
+            "random_reset_pose": False,
+        }
+
+    @classmethod
+    def get_default_obs_config(cls) -> Dict[str, Any]:
+        """Get default observation configuration."""
+        return {
+            "num_obs": 33,  # 8 DOF
+            "obs_scales": {
+                "lin_vel": 2.0,
+                "ang_vel": 0.25,
+                "dof_pos": 1.0,
+                "dof_vel": 0.05,
+            },
+        }
+
+    @classmethod
+    def get_default_reward_config(cls) -> Dict[str, Any]:
+        """Get default reward configuration."""
+        return {
+            "tracking_sigma": 0.25,
+            "base_height_target": 0.3,
+            "feet_height_target": 0.1,
+            "reward_scales": {
+                "tracking_lin_vel": 2.0,
+                "tracking_ang_vel": 0.2,
+                "lin_vel_z": -1.0,
+                "base_height": -50.0,
+                "action_rate": -0.05,
+                "similar_to_default": -0.05,
+                # "feet_height": -4.0,
+            },
+        }
+
+    @classmethod
+    def get_default_command_config(cls) -> Dict[str, Any]:
+        """Get default command configuration."""
+        return {
+            "num_commands": 3,
+            "lin_vel_x_range": [-1.0, 1.0],
+            "lin_vel_y_range": [-1.0, 1.0],
+            "ang_vel_range": [0.0, 0.0],
+        }
+
+    def __init__(self,
+                 num_envs: int,
+                 terrain_cfg: TerrainConfig,
+                 env_cfg: Optional[Dict[str, Any]] = None,
+                 obs_cfg: Optional[Dict[str, Any]] = None,
+                 reward_cfg: Optional[Dict[str, Any]] = None,
+                 command_cfg: Optional[Dict[str, Any]] = None,
+                 urdf_path: str = "assets/newton/newton.urdf",
+                 enable_lstm: bool = False,
+                 show_viewer: bool = False,
+                 device: str = "cuda"):
+
         self.device = torch.device(device)
+        self.enable_lstm = enable_lstm
+        self.urdf_path = urdf_path
 
-        self.num_envs = num_envs
-        self.num_obs = obs_cfg["num_obs"]
-        self.num_privileged_obs = None
-        self.num_actions = env_cfg["num_actions"]
-        self.num_commands = command_cfg["num_commands"]
+        # Load default configurations
+        self.env_cfg = self.get_default_env_config() if env_cfg is None else env_cfg
+        self.obs_cfg = self.get_default_obs_config() if obs_cfg is None else obs_cfg
+        self.reward_cfg = self.get_default_reward_config() if reward_cfg is None else reward_cfg
+        self.command_cfg = self.get_default_command_config() if command_cfg is None else command_cfg
 
-        self.simulate_action_latency = True  # there is a 1 step latency on real robot
         self.dt = 0.02  # control frequency on real robot is 50hz
-        self.max_episode_length = math.ceil(env_cfg["episode_length_s"] / self.dt)
+        self.num_envs = num_envs
+        self.num_obs = self.obs_cfg["num_obs"]
+        self.simulate_action_latency = self.env_cfg.get("simulate_action_latency", False)
+        self.num_actions = self.env_cfg["num_actions"]
+        self.num_commands = self.command_cfg["num_commands"]
+        self.max_episode_length = math.ceil(self.env_cfg["episode_length_s"] / self.dt)
+        self.num_privileged_obs = None
 
-        self.env_cfg = env_cfg
-        self.obs_cfg = obs_cfg
-        self.reward_cfg = reward_cfg
-        self.command_cfg = command_cfg
-        self.terrain_cfg = terrain_cfg
+        self.obs_scales = self.obs_cfg["obs_scales"]
+        self.reward_scales = self.reward_cfg["reward_scales"]
 
-        self.obs_scales = obs_cfg["obs_scales"]
-        self.reward_scales = reward_cfg["reward_scales"]
+        self.keyboard_controller = KeyboardController(command_scale=self.command_cfg["lin_vel_x_range"][1])
 
         # create scene
         self.scene = gs.Scene(
@@ -74,7 +200,7 @@ class NewtonCurriculumEnv:
 
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="assets/newton/newton.urdf",
+                file=self.urdf_path,
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
