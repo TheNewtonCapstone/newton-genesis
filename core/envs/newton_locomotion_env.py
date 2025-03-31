@@ -24,14 +24,14 @@ class NewtonLocomotionEnv:
         return {
             "num_actions": 8,  # 8 DOF
             "default_joint_angles": {  # [rad]
-                "FL_HFE": 0.8,
-                "FR_HFE": 0.8,
-                "HL_HFE": 0.8,
-                "HR_HFE": 0.8,
-                "FL_KFE": -1.4,
-                "FR_KFE": -1.4,
-                "HL_KFE": -1.4,
-                "HR_KFE": -1.4,
+                "FL_HFE": 0.6,
+                "FR_HFE": 0.6,
+                "HL_HFE": 0.6,
+                "HR_HFE": 0.6,
+                "FL_KFE": -1.2,
+                "FR_KFE": -1.2,
+                "HL_KFE": -1.2,
+                "HR_KFE": -1.2,
             },
             "dof_names": [
                 "FL_HFE",
@@ -71,8 +71,8 @@ class NewtonLocomotionEnv:
                 "HR_LOWER_LEG",
             ],
             # PD
-            "kp": 10.0,
-            "kd": 0.5,
+            "kp": 20.0,
+            "kd": 1.0,
             # termination
             "termination_if_roll_greater_than": 10,  # degree
             "termination_if_pitch_greater_than": 10,
