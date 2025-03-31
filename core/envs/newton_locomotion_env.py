@@ -9,8 +9,8 @@ import torch
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
 
 from core.controllers.keyboard_controller import KeyboardController
-from core.domain_randomizer import DomainRandomizer
 from core.logger.logger import Logger
+from core.domain_randomizer import DomainRandomizer
 
 
 def gs_rand_float(lower, upper, shape, device):
@@ -198,7 +198,6 @@ class NewtonLocomotionEnv:
                 file=urdf_path,
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
-                # fixed=True,
             ),
         )
         self.cam = self.scene.add_camera(
@@ -252,8 +251,8 @@ class NewtonLocomotionEnv:
             # PD control parameters
             self.robot.set_dofs_kp([self.env_cfg["kp"]] * self.num_actions, self.motor_dofs)
             self.robot.set_dofs_kv([self.env_cfg["kd"]] * self.num_actions, self.motor_dofs)
-            self.robot.set_dofs_force_range([-self.env_cfg["clip_actions"]] * self.num_actions,
-                                            [self.env_cfg["clip_actions"]] * self.num_actions, self.motor_dofs)
+            self.robot.set_dofs_force_range([-self.env_cfg["clip_actions"]] * self.num_actions, [self.env_cfg["clip_actions"]] * self.num_actions, self.motor_dofs)
+
 
         # prepare reward functions and multiply reward scales by dt
         self.reward_functions, self.episode_sums = dict(), dict()
@@ -318,18 +317,9 @@ class NewtonLocomotionEnv:
         self._resample_commands(envs_idx)
 
     def _resample_commands(self, envs_idx):
-        self.commands[envs_idx, 0] = gs_rand_float(self.command_cfg["lin_vel_x_range"][0],
-                                                   self.command_cfg["lin_vel_x_range"][1], (len(envs_idx),),
-                                                   self.device)
-        self.commands[envs_idx, 1] = gs_rand_float(self.command_cfg["lin_vel_y_range"][0],
-                                                   self.command_cfg["lin_vel_y_range"][1], (len(envs_idx),),
-                                                   self.device)
-        self.commands[envs_idx, 2] = gs_rand_float(self.command_cfg["ang_vel_range"][0],
-                                                   self.command_cfg["ang_vel_range"][1], (len(envs_idx),), self.device)
-
-        # if under 0.2 on x and y, set to 0
-        # self.commands[envs_idx, 0] = torch.where(torch.abs(self.commands[envs_idx, 0]) < 0.2, 0.0, self.commands[envs_idx, 0], )
-        # self.commands[envs_idx, 1] = torch.where(torch.abs(self.commands[envs_idx, 1]) < 0.2, 0.0, self.commands[envs_idx, 1], )
+        self.commands[envs_idx, 0] = gs_rand_float(self.command_cfg["lin_vel_x_range"][0], self.command_cfg["lin_vel_x_range"][1], (len(envs_idx),), self.device)
+        self.commands[envs_idx, 1] = gs_rand_float(self.command_cfg["lin_vel_y_range"][0], self.command_cfg["lin_vel_y_range"][1], (len(envs_idx),), self.device)
+        self.commands[envs_idx, 2] = gs_rand_float(self.command_cfg["ang_vel_range"][0], self.command_cfg["ang_vel_range"][1], (len(envs_idx),), self.device)
 
     def step(self, actions):
         self.actions = torch.clip(actions, -self.env_cfg["clip_actions"], self.env_cfg["clip_actions"])
@@ -387,13 +377,7 @@ class NewtonLocomotionEnv:
         )
         self.update_commands(envs_idx)
 
-        # check termination and reset
-        contacts = self.robot.get_contacts(self.plane)
-        robot_contacts = torch.tensor(contacts["link_b"])
-        termination_contacts = torch.isin(robot_contacts, self.feet_links).any(dim=1).to(self.device)
-
         self.reset_buf = self.episode_length_buf > self.max_episode_length
-        # self.reset_buf |= termination_contacts
         self.reset_buf |= torch.abs(self.base_euler[:, 1]) > self.env_cfg["termination_if_pitch_greater_than"]
         self.reset_buf |= torch.abs(self.base_euler[:, 0]) > self.env_cfg["termination_if_roll_greater_than"]
 
@@ -402,7 +386,7 @@ class NewtonLocomotionEnv:
         self.extras["time_outs"][time_out_idx] = 1.0
 
         self.reset_idx(self.reset_buf.nonzero(as_tuple=False).flatten())
-        #
+
         # compute reward
         self.rew_buf[:] = 0.0
         for name, reward_func in self.reward_functions.items():
@@ -494,7 +478,7 @@ class NewtonLocomotionEnv:
         self.extras["episode"] = {}
         for key in self.episode_sums.keys():
             self.extras["episode"]["rew_" + key] = (
-                    torch.mean(self.episode_sums[key][envs_idx]).item() / self.env_cfg["episode_length_s"]
+                torch.mean(self.episode_sums[key][envs_idx]).item() / self.env_cfg["episode_length_s"]
             )
             self.episode_sums[key][envs_idx] = 0.0
 
@@ -506,6 +490,14 @@ class NewtonLocomotionEnv:
         self.reset_buf[:] = True
         self.reset_idx(torch.arange(self.num_envs, device=self.device))
         return self.obs_buf, None
+
+    def _get_contact_termination(self):
+        # check termination and reset
+        contacts = self.robot.get_contacts(self.plane)
+        robot_contacts = torch.tensor(contacts["link_b"])
+        termination_contacts = torch.isin(robot_contacts, self.feet_links).any(dim=1).to(self.device)
+        return termination_contacts
+
 
     # ------------ reward functions----------------
     def _reward_tracking_lin_vel(self):
