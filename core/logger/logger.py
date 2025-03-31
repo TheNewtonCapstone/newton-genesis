@@ -3,7 +3,6 @@ import os
 import torch
 import time
 
-
 class Logger:
     def __init__(self, scene, log_dir="data_logs"):
         """ Initializes logger and creates necessary directories/files. """

@@ -1,0 +1,3 @@
+from .newton_locomotion_alt_env import NewtonLocomotionAltEnv
+from .newton_curriculum_env import NewtonCurriculumEnv
+from .newton_locomotion_env import NewtonLocomotionEnv

@@ -1,5 +1,4 @@
 import numpy as np
-from genesis.options.morphs import Terrain as TerrainMorph
 from .generators import (
     pyramid_sloped_terrain,
     pyramid_stairs_terrain,
