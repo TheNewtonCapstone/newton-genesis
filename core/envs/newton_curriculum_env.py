@@ -7,7 +7,7 @@ from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transfo
 
 from core.config import TerrainConfig
 from core.controllers import KeyboardController
-from core.domain_randomizer import DomainRandomizer
+from core.domain_randomizer import DomainRandomizer, gaussian_noise
 from core.terrain import Terrain
 
 
@@ -317,14 +317,19 @@ class NewtonCurriculumEnv:
             self.rew_buf += rew
             self.episode_sums[name] += rew
 
+        base_ang_vel = gaussian_noise(self.base_ang_vel, std=0.5)
+        projected_gravity = gaussian_noise(self.projected_gravity, std=0.1)
+        dof_pos = gaussian_noise(self.dof_pos, std=0.25)
+        dof_vel = gaussian_noise(self.dof_vel, std=0.5)
+
         # compute observations
         self.obs_buf = torch.cat(
             [
-                self.base_ang_vel * self.obs_scales["ang_vel"],  # 3
-                self.projected_gravity,  # 3
+                base_ang_vel * self.obs_scales["ang_vel"],  # 3
+                projected_gravity,  # 3
                 self.commands * self.commands_scale,  # 3
-                (self.dof_pos - self.default_dof_pos) * self.obs_scales["dof_pos"],  # 12
-                self.dof_vel * self.obs_scales["dof_vel"],  # 12
+                (dof_pos - self.default_dof_pos) * self.obs_scales["dof_pos"],  # 12
+                dof_vel * self.obs_scales["dof_vel"],  # 12
                 self.actions,  # 12
             ],
             axis=-1,
