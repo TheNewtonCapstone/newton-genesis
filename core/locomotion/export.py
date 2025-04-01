@@ -9,9 +9,10 @@ from core.envs.newton_locomotion_env import NewtonLocomotionEnv
 import genesis as gs
 import pprint
 def main():
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="newton-alt-no-haa")
-    parser.add_argument("--ckpt", type=int, default=700)
+    parser.add_argument("-e", "--exp_name", type=str, default="newton_locomotion_kp5_kd05")
+    parser.add_argument("--ckpt", type=int, default=500)
     args = parser.parse_args()
 
     gs.init()
@@ -46,7 +47,7 @@ def main():
     dummy_input = torch.zeros(1, env.num_obs, device="cpu")
 
     # Define export path
-    onnx_path = os.path.join(log_dir, f"model_{args.ckpt}.onnx")
+    onnx_path = os.path.join(log_dir, f"{args.exp_name}_{args.ckpt}.onnx")
 
     # Export only the actor part (policy network)
     torch.onnx.export(

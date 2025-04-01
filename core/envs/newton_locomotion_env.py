@@ -71,8 +71,8 @@ class NewtonLocomotionEnv:
                 "HR_LOWER_LEG",
             ],
             # PD
-            "kp": 20.0,
-            "kd": 1.0,
+            "kp": 5.0,
+            "kd": 0.5,
             # termination
             "termination_if_roll_greater_than": 10,  # degree
             "termination_if_pitch_greater_than": 10,
@@ -113,8 +113,8 @@ class NewtonLocomotionEnv:
                 "lin_vel_z": -1.0,
                 "base_height": -50.0,
                 "action_rate": -0.05,
-                "similar_to_default": -0.05,
-                # "feet_height": -4.0,
+                "similar_to_default": -0.025,
+                "feet_height": 4.0,
             },
         }
 
@@ -124,7 +124,7 @@ class NewtonLocomotionEnv:
         return {
             "num_commands": 3,
             "lin_vel_x_range": [-1.0, 1.0],
-            "lin_vel_y_range": [-1.0, 1.0],
+            "lin_vel_y_range": [0.0, 0.0],
             "ang_vel_range": [0.0, 0.0],
         }
 
